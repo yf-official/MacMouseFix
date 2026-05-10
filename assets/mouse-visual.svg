@@ -1,0 +1,45 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 420 500" role="img" aria-labelledby="title desc">
+  <title id="title">Mouse control map</title>
+  <desc id="desc">A stylized mouse with side buttons, wheel, and primary buttons.</desc>
+  <defs>
+    <linearGradient id="body" x1="0" x2="1" y1="0" y2="1">
+      <stop offset="0" stop-color="#f9fbff"/>
+      <stop offset="0.45" stop-color="#dfe6f0"/>
+      <stop offset="1" stop-color="#aeb8c7"/>
+    </linearGradient>
+    <linearGradient id="side" x1="0" x2="1" y1="0" y2="0">
+      <stop offset="0" stop-color="#6a7482"/>
+      <stop offset="1" stop-color="#222a36"/>
+    </linearGradient>
+    <linearGradient id="wheel" x1="0" x2="0" y1="0" y2="1">
+      <stop offset="0" stop-color="#2d3746"/>
+      <stop offset="1" stop-color="#101621"/>
+    </linearGradient>
+    <filter id="shadow" x="-20%" y="-10%" width="140%" height="130%">
+      <feDropShadow dx="0" dy="24" stdDeviation="24" flood-color="#1a2432" flood-opacity="0.22"/>
+    </filter>
+  </defs>
+  <rect width="420" height="500" rx="52" fill="none"/>
+  <g filter="url(#shadow)">
+    <path d="M210 38c81 0 145 84 145 210 0 147-60 224-145 224S65 395 65 248C65 122 129 38 210 38Z" fill="url(#body)" stroke="#8d99aa" stroke-width="3"/>
+    <path d="M70 232c-16 22-24 56-20 97 2 18 13 31 30 31h42c8 0 14-7 12-15l-28-113c-4-16-26-14-36 0Z" fill="url(#side)" opacity=".96"/>
+    <path d="M87 171c-13 8-23 24-26 48l56 5c13 1 24-8 26-21l3-25c1-10-7-18-17-17l-42 10Z" fill="url(#side)"/>
+    <path d="M96 282c-16 3-28 16-30 32l-3 24c-1 9 6 17 15 17h44c8 0 14-7 12-15l-12-48c-3-8-12-13-26-10Z" fill="#384253"/>
+    <path d="M211 40v143" fill="none" stroke="#9ba6b6" stroke-width="3"/>
+    <path d="M126 64c43-29 126-29 168 0-13 64-39 111-84 119-45-8-70-55-84-119Z" fill="#f8fbff" opacity=".45"/>
+    <path d="M197 65h26c10 0 18 8 18 18v74c0 19-13 35-31 35s-31-16-31-35V83c0-10 8-18 18-18Z" fill="url(#wheel)" stroke="#1b2330" stroke-width="3"/>
+    <path d="M192 84h36M192 101h36M192 118h36M192 135h36" stroke="#6f7c8d" stroke-width="4" stroke-linecap="round"/>
+    <path d="M111 88c-24 34-39 87-39 154 0 128 53 198 138 198" fill="none" stroke="#ffffff" stroke-opacity=".34" stroke-width="6" stroke-linecap="round"/>
+    <path d="M309 88c24 34 39 87 39 154 0 128-53 198-138 198" fill="none" stroke="#1c2635" stroke-opacity=".16" stroke-width="6" stroke-linecap="round"/>
+    <path d="M122 61c-31 36-48 102-45 183 1 22 22 28 38 12 44-45 77-67 95-72-44-8-69-56-88-123Z" fill="#ffffff" opacity=".28"/>
+    <path d="M298 61c31 36 48 102 45 183-1 22-22 28-38 12-44-45-77-67-95-72 44-8 69-56 88-123Z" fill="#4c5a6d" opacity=".16"/>
+  </g>
+  <g font-family="-apple-system, BlinkMacSystemFont, Segoe UI, sans-serif" font-size="18" font-weight="700">
+    <circle cx="121" cy="201" r="24" fill="#1477d4"/>
+    <text x="121" y="208" text-anchor="middle" fill="#fff">4</text>
+    <circle cx="115" cy="317" r="24" fill="#1477d4"/>
+    <text x="115" y="324" text-anchor="middle" fill="#fff">5</text>
+    <circle cx="210" cy="112" r="20" fill="#18a27c"/>
+    <text x="210" y="119" text-anchor="middle" fill="#fff">M</text>
+  </g>
+</svg>
