@@ -1,0 +1,576 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Mac Mouse Fix Pro</title>
+    <meta
+      name="description"
+      content="A browser-based functional replica of the Mac Mouse Fix settings app."
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="app-shell" id="appShell">
+      <header class="titlebar">
+        <div class="traffic" aria-hidden="true">
+          <span class="traffic-dot close"></span>
+          <span class="traffic-dot minimize"></span>
+          <span class="traffic-dot zoom"></span>
+        </div>
+
+        <div class="brand">
+          <img src="assets/mouse-visual.svg" alt="" class="brand-mark" />
+          <div>
+            <h1>Mac Mouse Fix Pro</h1>
+            <p id="activeProfileLabel">Global profile</p>
+          </div>
+        </div>
+
+        <div class="top-status" aria-label="System status">
+          <button class="status-pill" data-toggle-permission="accessibility">
+            <span class="status-dot" data-status-dot="accessibility"></span>
+            Accessibility
+          </button>
+          <button class="status-pill" data-toggle-permission="inputMonitoring">
+            <span class="status-dot" data-status-dot="inputMonitoring"></span>
+            Input Monitoring
+          </button>
+          <button class="status-pill" data-toggle-permission="helper">
+            <span class="status-dot" data-status-dot="helper"></span>
+            Helper
+          </button>
+        </div>
+
+        <div class="toolbar">
+          <label class="search-wrap" for="commandSearch">
+            <span class="search-icon" aria-hidden="true">⌘</span>
+            <input
+              id="commandSearch"
+              type="search"
+              autocomplete="off"
+              placeholder="Search settings"
+            />
+          </label>
+          <button class="icon-button" id="importButton" title="Import settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3v10m0-10 4 4m-4-4-4 4" />
+              <path d="M5 14v4a3 3 0 0 0 3 3h8a3 3 0 0 0 3-3v-4" />
+            </svg>
+          </button>
+          <button class="icon-button" id="exportButton" title="Export settings">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 21V11m0 10 4-4m-4 4-4-4" />
+              <path d="M5 10V6a3 3 0 0 1 3-3h8a3 3 0 0 1 3 3v4" />
+            </svg>
+          </button>
+          <button class="icon-button" id="themeButton" title="Toggle theme">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M12 3a7 7 0 0 0 9 9 9 9 0 1 1-9-9Z" />
+            </svg>
+          </button>
+          <button class="icon-button danger" id="resetButton" title="Reset demo data">
+            <svg viewBox="0 0 24 24" aria-hidden="true">
+              <path d="M3 12a9 9 0 1 0 3-6.7" />
+              <path d="M3 4v6h6" />
+            </svg>
+          </button>
+        </div>
+      </header>
+
+      <div class="workspace">
+        <aside class="sidebar" aria-label="Settings sections">
+          <button class="nav-item active" data-section="overview">
+            <span class="nav-icon">⌂</span>
+            Overview
+          </button>
+          <button class="nav-item" data-section="buttons">
+            <span class="nav-icon">◉</span>
+            Buttons
+          </button>
+          <button class="nav-item" data-section="gestures">
+            <span class="nav-icon">↕</span>
+            Gestures
+          </button>
+          <button class="nav-item" data-section="scrolling">
+            <span class="nav-icon">⇅</span>
+            Scrolling
+          </button>
+          <button class="nav-item" data-section="profiles">
+            <span class="nav-icon">▦</span>
+            Profiles
+          </button>
+          <button class="nav-item" data-section="permissions">
+            <span class="nav-icon">✓</span>
+            Permissions
+          </button>
+          <button class="nav-item" data-section="menubar">
+            <span class="nav-icon">⌁</span>
+            Menu Bar
+          </button>
+          <button class="nav-item" data-section="license">
+            <span class="nav-icon">◆</span>
+            License
+          </button>
+        </aside>
+
+        <main class="content">
+          <section class="panel active" id="overview" data-panel>
+            <div class="panel-grid overview-grid">
+              <article class="surface span-2 hero-panel">
+                <div class="section-heading">
+                  <div>
+                    <p class="eyebrow">Device</p>
+                    <h2 id="deviceTitle">MX Master 3S</h2>
+                  </div>
+                  <div class="segmented" role="group" aria-label="Power">
+                    <button class="segment active" data-enabled="true">On</button>
+                    <button class="segment" data-enabled="false">Off</button>
+                  </div>
+                </div>
+
+                <div class="mouse-stage">
+                  <div class="screen-preview" id="screenPreview">
+                    <div class="space-strip">
+                      <span data-space="1" class="active">1</span>
+                      <span data-space="2">2</span>
+                      <span data-space="3">3</span>
+                    </div>
+                    <div class="preview-window active-window">
+                      <span id="previewTitle">Finder</span>
+                    </div>
+                    <div class="preview-window secondary-window"></div>
+                    <div class="dock-preview"></div>
+                  </div>
+                  <div class="mouse-map" aria-label="Interactive mouse map">
+                    <img src="assets/mouse-visual.svg" alt="Mouse control map" />
+                    <button class="hit-zone left" data-control="left" title="Left click"></button>
+                    <button class="hit-zone right" data-control="right" title="Right click"></button>
+                    <button class="hit-zone middle" data-control="middle" title="Wheel click"></button>
+                    <button class="hit-zone b4" data-control="button4" title="Button 4"></button>
+                    <button class="hit-zone b5" data-control="button5" title="Button 5"></button>
+                  </div>
+                </div>
+              </article>
+
+              <article class="surface">
+                <div class="section-heading compact">
+                  <div>
+                    <p class="eyebrow">Profile</p>
+                    <h3>Active Scope</h3>
+                  </div>
+                </div>
+                <label class="field">
+                  <span>Profile</span>
+                  <select id="profileSelect"></select>
+                </label>
+                <label class="field">
+                  <span>Device</span>
+                  <select id="deviceSelect">
+                    <option>MX Master 3S</option>
+                    <option>Logitech M705</option>
+                    <option>Generic Mouse</option>
+                    <option>Gaming Mouse</option>
+                  </select>
+                </label>
+                <button class="primary full-width" id="duplicateProfileButton">
+                  Duplicate Profile
+                </button>
+              </article>
+
+              <article class="surface">
+                <div class="section-heading compact">
+                  <div>
+                    <p class="eyebrow">Live</p>
+                    <h3>Action Output</h3>
+                  </div>
+                </div>
+                <div class="action-display" id="actionDisplay">
+                  <span class="action-icon">◉</span>
+                  <strong>Ready</strong>
+                  <span>Click a mapped mouse control.</span>
+                </div>
+                <div class="metric-row">
+                  <span>Space</span>
+                  <strong id="spaceMetric">1</strong>
+                </div>
+                <div class="metric-row">
+                  <span>Smooth scroll</span>
+                  <strong id="scrollMetric">72%</strong>
+                </div>
+              </article>
+
+              <article class="surface span-2">
+                <div class="section-heading compact">
+                  <div>
+                    <p class="eyebrow">Tester</p>
+                    <h3>Gesture Pad</h3>
+                  </div>
+                  <div class="button-group" id="gestureButtonGroup">
+                    <button class="small-button active" data-gesture-button="button4">
+                      Button 4
+                    </button>
+                    <button class="small-button" data-gesture-button="button5">
+                      Button 5
+                    </button>
+                  </div>
+                </div>
+                <div class="gesture-pad" id="gesturePad">
+                  <div class="gesture-cross">
+                    <span data-direction="up">Up</span>
+                    <span data-direction="left">Left</span>
+                    <span data-direction="right">Right</span>
+                    <span data-direction="down">Down</span>
+                  </div>
+                  <div class="gesture-cursor" id="gestureCursor"></div>
+                </div>
+              </article>
+
+              <article class="surface">
+                <div class="section-heading compact">
+                  <div>
+                    <p class="eyebrow">Recent</p>
+                    <h3>Event Log</h3>
+                  </div>
+                  <button class="small-button" id="clearLogButton">Clear</button>
+                </div>
+                <ol class="event-log" id="eventLog"></ol>
+              </article>
+            </div>
+          </section>
+
+          <section class="panel" id="buttons" data-panel>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Mapping</p>
+                <h2>Buttons</h2>
+              </div>
+              <div class="button-group">
+                <button class="small-button" id="presetProductivity">Productivity</button>
+                <button class="small-button" id="presetSpaces">Spaces</button>
+                <button class="small-button" id="presetDefaults">Defaults</button>
+              </div>
+            </div>
+
+            <div class="surface">
+              <div class="table-header control-row">
+                <span>Control</span>
+                <span>Action</span>
+                <span>Shortcut or target</span>
+                <span>Test</span>
+              </div>
+              <div class="control-table" id="buttonTable"></div>
+            </div>
+          </section>
+
+          <section class="panel" id="gestures" data-panel>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Drag</p>
+                <h2>Gestures</h2>
+              </div>
+              <div class="button-group">
+                <button class="small-button active" data-gesture-editor="button4">
+                  Button 4
+                </button>
+                <button class="small-button" data-gesture-editor="button5">
+                  Button 5
+                </button>
+              </div>
+            </div>
+
+            <div class="panel-grid">
+              <article class="surface span-2">
+                <div class="gesture-editor-grid" id="gestureEditor"></div>
+              </article>
+              <article class="surface">
+                <div class="section-heading compact">
+                  <div>
+                    <p class="eyebrow">Threshold</p>
+                    <h3>Recognition</h3>
+                  </div>
+                </div>
+                <label class="range-field">
+                  <span>Activation distance</span>
+                  <output id="thresholdOutput">48 px</output>
+                  <input id="gestureThreshold" type="range" min="20" max="120" step="4" />
+                </label>
+                <label class="toggle-line">
+                  <span>Hold button while dragging</span>
+                  <input id="holdGestureToggle" type="checkbox" />
+                </label>
+                <label class="toggle-line">
+                  <span>Show direction overlay</span>
+                  <input id="gestureOverlayToggle" type="checkbox" />
+                </label>
+              </article>
+            </div>
+          </section>
+
+          <section class="panel" id="scrolling" data-panel>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Wheel</p>
+                <h2>Scrolling</h2>
+              </div>
+              <div class="segmented" id="smoothnessControl" role="group" aria-label="Smoothness">
+                <button class="segment" data-smoothness="0">Off</button>
+                <button class="segment" data-smoothness="50">Regular</button>
+                <button class="segment active" data-smoothness="72">High</button>
+                <button class="segment" data-smoothness="92">Fluid</button>
+              </div>
+            </div>
+
+            <div class="panel-grid">
+              <article class="surface">
+                <label class="toggle-line">
+                  <span>Natural direction</span>
+                  <input id="naturalScrollToggle" type="checkbox" />
+                </label>
+                <label class="toggle-line">
+                  <span>Smooth scrolling</span>
+                  <input id="smoothScrollToggle" type="checkbox" />
+                </label>
+                <label class="toggle-line">
+                  <span>Momentum after wheel stop</span>
+                  <input id="momentumToggle" type="checkbox" />
+                </label>
+                <label class="toggle-line">
+                  <span>Horizontal wheel support</span>
+                  <input id="horizontalToggle" type="checkbox" />
+                </label>
+              </article>
+
+              <article class="surface span-2">
+                <div class="range-grid">
+                  <label class="range-field">
+                    <span>Scroll speed</span>
+                    <output id="speedOutput">62%</output>
+                    <input id="scrollSpeed" type="range" min="10" max="120" />
+                  </label>
+                  <label class="range-field">
+                    <span>Acceleration</span>
+                    <output id="accelOutput">35%</output>
+                    <input id="scrollAcceleration" type="range" min="0" max="100" />
+                  </label>
+                  <label class="range-field">
+                    <span>Step precision</span>
+                    <output id="precisionOutput">6</output>
+                    <input id="scrollPrecision" type="range" min="1" max="12" />
+                  </label>
+                </div>
+              </article>
+
+              <article class="surface span-3">
+                <div class="section-heading compact">
+                  <div>
+                    <p class="eyebrow">Preview</p>
+                    <h3>Scroll Feel</h3>
+                  </div>
+                  <button class="primary" id="spinWheelButton">Spin Wheel</button>
+                </div>
+                <div class="scroll-preview" id="scrollPreview">
+                  <div class="preview-document">
+                    <h4>Long document</h4>
+                    <p>Calendar, browser, Finder, timeline, design canvas.</p>
+                    <p>Precise wheel input is converted into animated movement.</p>
+                    <p>Modifier-aware scrolling can map to zoom, horizontal scroll, or app navigation.</p>
+                    <p>Settings are stored per profile and can be exported as JSON.</p>
+                    <p>The preview uses the same state as the button and gesture testers.</p>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="panel" id="profiles" data-panel>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Rules</p>
+                <h2>Profiles</h2>
+              </div>
+              <button class="primary" id="addProfileButton">Add Profile</button>
+            </div>
+
+            <div class="profile-layout">
+              <article class="surface">
+                <div class="profile-list" id="profileList"></div>
+              </article>
+              <article class="surface">
+                <div class="section-heading compact">
+                  <div>
+                    <p class="eyebrow">Editor</p>
+                    <h3 id="profileEditorTitle">Global</h3>
+                  </div>
+                </div>
+                <label class="field">
+                  <span>Name</span>
+                  <input id="profileNameInput" type="text" />
+                </label>
+                <label class="field">
+                  <span>Application bundle</span>
+                  <input id="profileBundleInput" type="text" placeholder="com.apple.finder" />
+                </label>
+                <label class="toggle-line">
+                  <span>Use as fallback profile</span>
+                  <input id="fallbackProfileToggle" type="checkbox" />
+                </label>
+                <div class="button-group align-right">
+                  <button class="small-button danger" id="deleteProfileButton">Delete</button>
+                  <button class="primary" id="saveProfileButton">Save</button>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="panel" id="permissions" data-panel>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">System</p>
+                <h2>Permissions</h2>
+              </div>
+              <button class="primary" id="grantAllButton">Grant All</button>
+            </div>
+
+            <div class="panel-grid">
+              <article class="surface permission-card" data-permission-card="accessibility">
+                <span class="permission-icon">✓</span>
+                <div>
+                  <h3>Accessibility</h3>
+                  <p>System-wide mouse event control.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" data-permission-input="accessibility" />
+                  <span></span>
+                </label>
+              </article>
+              <article class="surface permission-card" data-permission-card="inputMonitoring">
+                <span class="permission-icon">⌕</span>
+                <div>
+                  <h3>Input Monitoring</h3>
+                  <p>Low-level button and wheel recognition.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" data-permission-input="inputMonitoring" />
+                  <span></span>
+                </label>
+              </article>
+              <article class="surface permission-card" data-permission-card="helper">
+                <span class="permission-icon">●</span>
+                <div>
+                  <h3>Helper App</h3>
+                  <p>Background processing and menu bar integration.</p>
+                </div>
+                <label class="switch">
+                  <input type="checkbox" data-permission-input="helper" />
+                  <span></span>
+                </label>
+              </article>
+            </div>
+          </section>
+
+          <section class="panel" id="menubar" data-panel>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Utility</p>
+                <h2>Menu Bar</h2>
+              </div>
+              <button class="primary" id="checkUpdatesButton">Check Updates</button>
+            </div>
+
+            <div class="panel-grid">
+              <article class="surface">
+                <label class="toggle-line">
+                  <span>Launch at login</span>
+                  <input id="launchAtLoginToggle" type="checkbox" />
+                </label>
+                <label class="toggle-line">
+                  <span>Show menu bar icon</span>
+                  <input id="menuIconToggle" type="checkbox" />
+                </label>
+                <label class="toggle-line">
+                  <span>Show action notifications</span>
+                  <input id="notificationsToggle" type="checkbox" />
+                </label>
+                <label class="toggle-line">
+                  <span>Automatic update checks</span>
+                  <input id="autoUpdatesToggle" type="checkbox" />
+                </label>
+              </article>
+              <article class="surface span-2">
+                <div class="menubar-preview">
+                  <div class="menu-window">
+                    <div class="menu-line strong">Mac Mouse Fix Pro</div>
+                    <div class="menu-line">Global profile</div>
+                    <div class="menu-line">Scrolling: High</div>
+                    <div class="menu-line">Permissions: <span id="menuPermissionSummary">2/3</span></div>
+                    <div class="menu-separator"></div>
+                    <button class="menu-item" data-section-link="buttons">Button mappings</button>
+                    <button class="menu-item" data-section-link="scrolling">Scrolling</button>
+                    <button class="menu-item" data-section-link="license">License</button>
+                  </div>
+                </div>
+              </article>
+            </div>
+          </section>
+
+          <section class="panel" id="license" data-panel>
+            <div class="section-heading">
+              <div>
+                <p class="eyebrow">Activation</p>
+                <h2>License</h2>
+              </div>
+              <span class="license-badge" id="licenseBadge">Trial</span>
+            </div>
+
+            <div class="panel-grid">
+              <article class="surface">
+                <div class="trial-meter">
+                  <svg viewBox="0 0 120 120" aria-hidden="true">
+                    <circle class="meter-track" cx="60" cy="60" r="48"></circle>
+                    <circle class="meter-fill" id="trialMeter" cx="60" cy="60" r="48"></circle>
+                  </svg>
+                  <div>
+                    <strong id="trialDays">14</strong>
+                    <span>trial days</span>
+                  </div>
+                </div>
+                <label class="field">
+                  <span>License key</span>
+                  <input id="licenseInput" type="text" placeholder="MMF-XXXX-XXXX-XXXX" />
+                </label>
+                <div class="button-group">
+                  <button class="primary" id="activateButton">Activate</button>
+                  <button class="small-button" id="extendTrialButton">Extend Trial</button>
+                </div>
+              </article>
+              <article class="surface span-2">
+                <div class="section-heading compact">
+                  <div>
+                    <p class="eyebrow">Replica Scope</p>
+                    <h3>Implemented Modules</h3>
+                  </div>
+                </div>
+                <div class="feature-checklist">
+                  <span>Button remapping</span>
+                  <span>Drag gestures</span>
+                  <span>Smooth scrolling controls</span>
+                  <span>Permission states</span>
+                  <span>Menu bar states</span>
+                  <span>Profiles and JSON backup</span>
+                  <span>License simulation</span>
+                  <span>Live mouse tester</span>
+                </div>
+              </article>
+            </div>
+          </section>
+        </main>
+      </div>
+    </div>
+
+    <input id="importFile" type="file" accept="application/json" hidden />
+    <div class="toast-host" id="toastHost" aria-live="polite"></div>
+
+    <script src="app.js"></script>
+  </body>
+</html>
