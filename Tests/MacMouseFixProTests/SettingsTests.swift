@@ -35,6 +35,7 @@ final class SettingsTests: XCTestCase {
         settings.setPhysicalButton(8, forLogicalButton: 3)
         settings.setPhysicalButton(9, forLogicalButton: 4)
         settings.setAction(.copy, forButton: 3)
+        settings.setScrollGestureAction(.nextApp, forButton: 3, direction: .down)
 
         let data = try JSONEncoder().encode(settings)
         let decoded = try JSONDecoder().decode(MouseSettings.self, from: data)
@@ -42,6 +43,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(decoded.auxiliaryButton1PhysicalID, 8)
         XCTAssertEqual(decoded.auxiliaryButton2PhysicalID, 9)
         XCTAssertEqual(decoded.action(forButton: 3), .copy)
+        XCTAssertEqual(decoded.scrollGestureAction(forButton: 3, direction: .down), .nextApp)
         XCTAssertEqual(decoded.settingsVersion, MouseSettings.currentVersion)
     }
 
@@ -59,5 +61,56 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(decoded.auxiliaryButton1PhysicalID, 3)
         XCTAssertEqual(decoded.auxiliaryButton2PhysicalID, 4)
         XCTAssertFalse(decoded.pointerSmoothing)
+        XCTAssertEqual(decoded.scrollGestureAction(forButton: 3, direction: .up), .volumeUp)
+        XCTAssertEqual(decoded.scrollGestureAction(forButton: 4, direction: .down), .zoomOut)
+    }
+
+    func testVersionThreePreservesPointerSmoothing() throws {
+        let versionThree = """
+        {
+          "settingsVersion": 3,
+          "pointerSmoothing": true
+        }
+        """
+
+        let decoded = try JSONDecoder().decode(MouseSettings.self, from: Data(versionThree.utf8))
+        XCTAssertTrue(decoded.pointerSmoothing)
+    }
+
+    func testPassingBothGestureDirectionsDisablesGestureCapture() {
+        var settings = MouseSettings()
+        settings.setScrollGestureAction(.passThrough, forButton: 3, direction: .up)
+        settings.setScrollGestureAction(.passThrough, forButton: 3, direction: .down)
+
+        XCTAssertFalse(settings.hasScrollGesture(forButton: 3))
+    }
+
+    func testSideButtonGestureSuppressesClickAfterScroll() {
+        var tracker = SideButtonGestureTracker()
+        XCTAssertTrue(tracker.press(
+            physicalButton: 5,
+            logicalButton: 3,
+            clickAction: .back,
+            hasScrollGesture: true
+        ))
+
+        XCTAssertEqual(tracker.activeButton?.logicalButton, 3)
+        XCTAssertEqual(tracker.markActiveScrollGestureUsed()?.usedScrollGesture, true)
+        XCTAssertEqual(tracker.release(physicalButton: 5)?.usedScrollGesture, true)
+        XCTAssertNil(tracker.activeButton)
+    }
+
+    func testSideButtonClickRemainsWhenNoScrollOccurs() {
+        var tracker = SideButtonGestureTracker()
+        XCTAssertTrue(tracker.press(
+            physicalButton: 4,
+            logicalButton: 4,
+            clickAction: .forward,
+            hasScrollGesture: true
+        ))
+
+        let released = tracker.release(physicalButton: 4)
+        XCTAssertEqual(released?.clickAction, .forward)
+        XCTAssertEqual(released?.usedScrollGesture, false)
     }
 }

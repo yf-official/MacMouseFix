@@ -16,6 +16,13 @@ final class MouseEngine {
     private let pointerSmoother = PointerSmoother()
     private var activeMask: CGEventMask = 0
     private var pressedButtons = Set<Int>()
+    private var sideButtonGestures = SideButtonGestureTracker()
+    private var lastGestureActionTimes: [GestureActionKey: TimeInterval] = [:]
+
+    private struct GestureActionKey: Hashable {
+        let logicalButton: Int
+        let direction: ScrollGestureDirection
+    }
 
     private init() {}
 
@@ -74,7 +81,7 @@ final class MouseEngine {
         runLoopSource = nil
         eventTap = nil
         activeMask = 0
-        pressedButtons.removeAll()
+        resetButtonState()
         smoothScroller.reset()
         pointerSmoother.reset()
         onStatusChange?("鼠标引擎已停止。")
@@ -89,6 +96,9 @@ final class MouseEngine {
         }
         if !settings.enabled || !settings.pointerSmoothing {
             pointerSmoother.reset()
+        }
+        if !settings.enabled {
+            resetButtonState()
         }
 
         let desiredMask = eventMask(for: settings)
@@ -128,7 +138,7 @@ final class MouseEngine {
         runLoopSource = nil
         eventTap = nil
         activeMask = 0
-        pressedButtons.removeAll()
+        resetButtonState()
     }
 
     private func setTapEnabled(_ enabled: Bool) {
@@ -146,7 +156,7 @@ final class MouseEngine {
             if let eventTap {
                 CGEvent.tapEnable(tap: eventTap, enable: true)
             }
-            pressedButtons.removeAll()
+            resetButtonState()
             return Unmanaged.passUnretained(event)
         }
 
@@ -172,6 +182,14 @@ final class MouseEngine {
             guard let logicalButton, let action = mappedAction else {
                 return Unmanaged.passUnretained(event)
             }
+            if sideButtonGestures.press(
+                physicalButton: physicalButton,
+                logicalButton: logicalButton,
+                clickAction: action,
+                hasScrollGesture: activeSettings.hasScrollGesture(forButton: logicalButton)
+            ) {
+                return nil
+            }
             if action == .passThrough {
                 announce("\(MouseSettings.displayName(forCGButton: logicalButton))：保持原样")
                 return Unmanaged.passUnretained(event)
@@ -182,6 +200,12 @@ final class MouseEngine {
 
         case .otherMouseUp:
             let physicalButton = Int(event.getIntegerValueField(.mouseEventButtonNumber))
+            if let heldButton = sideButtonGestures.release(physicalButton: physicalButton) {
+                if !heldButton.usedScrollGesture {
+                    performDeferredClick(heldButton)
+                }
+                return nil
+            }
             return pressedButtons.remove(physicalButton) == nil
                 ? Unmanaged.passUnretained(event)
                 : nil
@@ -190,6 +214,27 @@ final class MouseEngine {
             let isContinuous = event.getIntegerValueField(.scrollWheelEventIsContinuous) == 1
             if isContinuous {
                 return Unmanaged.passUnretained(event)
+            }
+            if
+                let direction = scrollGestureDirection(for: event),
+                let heldButton = sideButtonGestures.activeButton
+            {
+                let gestureAction = activeSettings.scrollGestureAction(
+                    forButton: heldButton.logicalButton,
+                    direction: direction
+                )
+                if gestureAction != .passThrough {
+                    _ = sideButtonGestures.markActiveScrollGestureUsed()
+                    smoothScroller.reset()
+                    if shouldPerformGestureAction(
+                        logicalButton: heldButton.logicalButton,
+                        direction: direction
+                    ) {
+                        let context = "\(MouseSettings.displayName(forCGButton: heldButton.logicalButton)) + \(direction.menuTitle)"
+                        perform(gestureAction, button: heldButton.logicalButton, context: context)
+                    }
+                    return nil
+                }
             }
             if activeSettings.smoothScroll && !isContinuous {
                 smoothScroller.enqueue(event: event, settings: activeSettings)
@@ -207,8 +252,8 @@ final class MouseEngine {
         settings.action(forButton: button)
     }
 
-    private func perform(_ action: MouseAction, button: Int) {
-        let prefix = "\(MouseSettings.displayName(forCGButton: button))："
+    private func perform(_ action: MouseAction, button: Int, context: String? = nil) {
+        let prefix = "\(context ?? MouseSettings.displayName(forCGButton: button))："
         switch action {
         case .passThrough:
             break
@@ -290,9 +335,59 @@ final class MouseEngine {
         case .middleClick:
             postMiddleClick()
             announce(prefix + "中键点击")
+        case .volumeUp:
+            Keyboard.volumeUp()
+            announce(prefix + "增大音量")
+        case .volumeDown:
+            Keyboard.volumeDown()
+            announce(prefix + "减小音量")
+        case .mute:
+            Keyboard.mute()
+            announce(prefix + "静音 / 取消静音")
+        case .previousApp:
+            Keyboard.previousApp()
+            announce(prefix + "上一个 App")
+        case .nextApp:
+            Keyboard.nextApp()
+            announce(prefix + "下一个 App")
         case .disabled:
             announce(prefix + "按钮已禁用")
         }
+    }
+
+    private func performDeferredClick(_ heldButton: SideButtonGestureTracker.HeldButton) {
+        if heldButton.clickAction == .passThrough {
+            postPhysicalButtonClick(heldButton.physicalButton)
+        } else {
+            perform(heldButton.clickAction, button: heldButton.logicalButton)
+        }
+    }
+
+    private func scrollGestureDirection(for event: CGEvent) -> ScrollGestureDirection? {
+        let lineDelta = event.getIntegerValueField(.scrollWheelEventDeltaAxis1)
+        let pointDelta = event.getIntegerValueField(.scrollWheelEventPointDeltaAxis1)
+        let delta = lineDelta != 0 ? lineDelta : pointDelta
+        guard delta != 0 else { return nil }
+        return delta > 0 ? .up : .down
+    }
+
+    private func shouldPerformGestureAction(
+        logicalButton: Int,
+        direction: ScrollGestureDirection
+    ) -> Bool {
+        let now = ProcessInfo.processInfo.systemUptime
+        let key = GestureActionKey(logicalButton: logicalButton, direction: direction)
+        if let lastTime = lastGestureActionTimes[key], now - lastTime < 0.075 {
+            return false
+        }
+        lastGestureActionTimes[key] = now
+        return true
+    }
+
+    private func resetButtonState() {
+        pressedButtons.removeAll(keepingCapacity: true)
+        sideButtonGestures.reset()
+        lastGestureActionTimes.removeAll(keepingCapacity: true)
     }
 
     private func transformScroll(_ event: CGEvent, settings: MouseSettings) {
@@ -336,6 +431,31 @@ final class MouseEngine {
         down.setIntegerValueField(.eventSourceUserData, value: syntheticScrollMarker)
         up?.setIntegerValueField(.eventSourceUserData, value: syntheticScrollMarker)
         down.post(tap: .cghidEventTap)
+        up?.post(tap: .cghidEventTap)
+    }
+
+    private func postPhysicalButtonClick(_ physicalButton: Int) {
+        let source = CGEventSource(stateID: .hidSystemState)
+        let location = CGEvent(source: nil)?.location ?? .zero
+        guard let mouseButton = CGMouseButton(rawValue: UInt32(physicalButton)) else { return }
+        let down = CGEvent(
+            mouseEventSource: source,
+            mouseType: .otherMouseDown,
+            mouseCursorPosition: location,
+            mouseButton: mouseButton
+        )
+        let up = CGEvent(
+            mouseEventSource: source,
+            mouseType: .otherMouseUp,
+            mouseCursorPosition: location,
+            mouseButton: mouseButton
+        )
+
+        down?.setIntegerValueField(.mouseEventButtonNumber, value: Int64(physicalButton))
+        up?.setIntegerValueField(.mouseEventButtonNumber, value: Int64(physicalButton))
+        down?.setIntegerValueField(.eventSourceUserData, value: syntheticScrollMarker)
+        up?.setIntegerValueField(.eventSourceUserData, value: syntheticScrollMarker)
+        down?.post(tap: .cghidEventTap)
         up?.post(tap: .cghidEventTap)
     }
 

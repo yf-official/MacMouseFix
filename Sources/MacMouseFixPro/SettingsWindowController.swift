@@ -20,6 +20,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let buttonDiagnosticLabel = NSTextField(labelWithString: "最近检测：请按一下鼠标侧键。")
     private var actionPopups: [Int: NSPopUpButton] = [:]
     private var physicalIDPopups: [Int: NSPopUpButton] = [:]
+    private var gestureActionPopups: [String: NSPopUpButton] = [:]
     private var diagnosticTimer: Timer?
 
     convenience init() {
@@ -95,16 +96,32 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             root.bottomAnchor.constraint(equalTo: documentView.bottomAnchor)
         ])
 
-        let title = NSTextField(labelWithString: "鼠标优化")
+        let title = NSTextField(labelWithString: "Mac Mouse Fix Pro")
         title.font = .systemFont(ofSize: 23, weight: .bold)
-        let subtitle = NSTextField(labelWithString: "鼠标结构固定为：左键、滚轮、右键、辅助按键 1、辅助按键 2。触控板连续滚动保持系统原样。")
+        let subtitle = NSTextField(labelWithString: "鼠标优化 · 配置侧键点击、按住侧键滚动、丝滑滚轮和指针手感。触控板连续滚动保持系统原样。")
         subtitle.textColor = .secondaryLabelColor
         subtitle.maximumNumberOfLines = 2
 
-        root.addArrangedSubview(title)
-        root.addArrangedSubview(subtitle)
+        let headingText = NSStackView()
+        headingText.orientation = .vertical
+        headingText.spacing = 3
+        headingText.addArrangedSubview(title)
+        headingText.addArrangedSubview(subtitle)
+
+        let heading = NSStackView()
+        heading.spacing = 12
+        heading.alignment = .centerY
+        let iconView = NSImageView(image: NSApp.applicationIconImage)
+        iconView.imageScaling = .scaleProportionallyUpOrDown
+        iconView.widthAnchor.constraint(equalToConstant: 48).isActive = true
+        iconView.heightAnchor.constraint(equalToConstant: 48).isActive = true
+        heading.addArrangedSubview(iconView)
+        heading.addArrangedSubview(headingText)
+
+        root.addArrangedSubview(heading)
         root.addArrangedSubview(statusBox())
         root.addArrangedSubview(buttonMappingBox())
+        root.addArrangedSubview(buttonScrollGestureBox())
         root.addArrangedSubview(scrollBox())
         root.addArrangedSubview(pointerBox())
 
@@ -259,6 +276,47 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         return box
     }
 
+    private func buttonScrollGestureBox() -> NSView {
+        let box = NSBox()
+        box.title = "按住侧键 + 滚轮"
+        box.boxType = .primary
+
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.spacing = 10
+        stack.translatesAutoresizingMaskIntoConstraints = false
+        box.contentView?.addSubview(stack)
+
+        for logicalButton in [3, 4] {
+            var popups: [ScrollGestureDirection: NSPopUpButton] = [:]
+            for direction in ScrollGestureDirection.allCases {
+                let popup = NSPopUpButton()
+                popup.tag = gestureTag(button: logicalButton, direction: direction)
+                configureActionPopup(popup)
+                popup.target = self
+                popup.action = #selector(changeScrollGestureAction(_:))
+                gestureActionPopups[gestureKey(button: logicalButton, direction: direction)] = popup
+                popups[direction] = popup
+            }
+
+            if let upPopup = popups[.up], let downPopup = popups[.down] {
+                stack.addArrangedSubview(gestureRow(
+                    button: logicalButton,
+                    upPopup: upPopup,
+                    downPopup: downPopup
+                ))
+            }
+        }
+
+        let note = NSTextField(labelWithString: "组合滚动触发后，本次侧键单击不会重复执行。选择“保持原样”可让该方向继续正常滚动。")
+        note.textColor = .secondaryLabelColor
+        note.maximumNumberOfLines = 2
+        stack.addArrangedSubview(note)
+
+        constrain(stack, in: box)
+        return box
+    }
+
     private func pointerBox() -> NSView {
         let box = NSBox()
         box.title = "指针移动"
@@ -309,15 +367,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         subtitle.textColor = .secondaryLabelColor
         labels.addArrangedSubview(title)
         labels.addArrangedSubview(subtitle)
-        labels.widthAnchor.constraint(equalToConstant: 175).isActive = true
+        labels.widthAnchor.constraint(equalToConstant: 160).isActive = true
 
         row.addArrangedSubview(labels)
         if let physicalPopup {
             physicalPopup.toolTip = "鼠标驱动上报的底层按钮编号"
-            physicalPopup.widthAnchor.constraint(equalToConstant: 96).isActive = true
+            physicalPopup.widthAnchor.constraint(equalToConstant: 90).isActive = true
             row.addArrangedSubview(physicalPopup)
         }
-        actionPopup.widthAnchor.constraint(equalToConstant: 215).isActive = true
+        actionPopup.widthAnchor.constraint(equalToConstant: 190).isActive = true
         row.addArrangedSubview(actionPopup)
         return row
     }
@@ -327,13 +385,49 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         row.spacing = 12
         row.alignment = .centerY
         let title = NSTextField(labelWithString: label)
-        title.widthAnchor.constraint(equalToConstant: 140).isActive = true
+        title.widthAnchor.constraint(equalToConstant: 130).isActive = true
         slider.widthAnchor.constraint(greaterThanOrEqualToConstant: 260).isActive = true
         valueLabel.widthAnchor.constraint(equalToConstant: 64).isActive = true
         row.addArrangedSubview(title)
         row.addArrangedSubview(slider)
         row.addArrangedSubview(valueLabel)
         return row
+    }
+
+    private func gestureRow(
+        button: Int,
+        upPopup: NSPopUpButton,
+        downPopup: NSPopUpButton
+    ) -> NSView {
+        let row = NSStackView()
+        row.spacing = 12
+        row.alignment = .centerY
+
+        let title = NSTextField(labelWithString: MouseSettings.displayName(forCGButton: button))
+        title.font = .systemFont(ofSize: 13, weight: .semibold)
+        title.widthAnchor.constraint(equalToConstant: 140).isActive = true
+
+        let upControl = labeledPopup(title: "滚轮向上", popup: upPopup)
+        let downControl = labeledPopup(title: "滚轮向下", popup: downPopup)
+        upControl.widthAnchor.constraint(equalToConstant: 160).isActive = true
+        downControl.widthAnchor.constraint(equalToConstant: 160).isActive = true
+
+        row.addArrangedSubview(title)
+        row.addArrangedSubview(upControl)
+        row.addArrangedSubview(downControl)
+        return row
+    }
+
+    private func labeledPopup(title: String, popup: NSPopUpButton) -> NSView {
+        let stack = NSStackView()
+        stack.orientation = .vertical
+        stack.spacing = 3
+        let label = NSTextField(labelWithString: title)
+        label.textColor = .secondaryLabelColor
+        popup.widthAnchor.constraint(equalToConstant: 160).isActive = true
+        stack.addArrangedSubview(label)
+        stack.addArrangedSubview(popup)
+        return stack
     }
 
     private func configureActionPopup(_ popup: NSPopUpButton) {
@@ -359,8 +453,8 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private func detail(forButton button: Int) -> String {
         switch button {
         case 2: return "滚轮按下，也就是中键"
-        case 3: return "第一个侧键，可校准底层编号"
-        case 4: return "第二个侧键，可校准底层编号"
+        case 3: return "第一个侧边辅助键"
+        case 4: return "第二个侧边辅助键"
         default: return "未使用"
         }
     }
@@ -396,6 +490,17 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         for (logicalButton, popup) in physicalIDPopups {
             if let physicalButton = settings.physicalButton(forLogicalButton: logicalButton) {
                 selectPhysicalButton(physicalButton, in: popup)
+            }
+        }
+        for logicalButton in [3, 4] {
+            for direction in ScrollGestureDirection.allCases {
+                let key = gestureKey(button: logicalButton, direction: direction)
+                guard let popup = gestureActionPopups[key] else { continue }
+                let action = settings.scrollGestureAction(
+                    forButton: logicalButton,
+                    direction: direction
+                )
+                select(action, in: popup)
             }
         }
         refreshButtonDiagnostic()
@@ -436,6 +541,21 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         let logicalButton = sender.tag
         store.update { settings in
             settings.setPhysicalButton(physicalButton, forLogicalButton: logicalButton)
+        }
+    }
+
+    @objc private func changeScrollGestureAction(_ sender: NSPopUpButton) {
+        guard
+            let action = selectedAction(in: sender),
+            let decoded = decodeGestureTag(sender.tag)
+        else { return }
+
+        store.update { settings in
+            settings.setScrollGestureAction(
+                action,
+                forButton: decoded.button,
+                direction: decoded.direction
+            )
         }
     }
 
@@ -491,6 +611,24 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
                 popup.selectItem(at: index)
                 return
             }
+        }
+    }
+
+    private func gestureKey(button: Int, direction: ScrollGestureDirection) -> String {
+        "\(button)-\(direction.rawValue)"
+    }
+
+    private func gestureTag(button: Int, direction: ScrollGestureDirection) -> Int {
+        button * 10 + (direction == .up ? 1 : 2)
+    }
+
+    private func decodeGestureTag(_ tag: Int) -> (button: Int, direction: ScrollGestureDirection)? {
+        let button = tag / 10
+        guard button == 3 || button == 4 else { return nil }
+        switch tag % 10 {
+        case 1: return (button, .up)
+        case 2: return (button, .down)
+        default: return nil
         }
     }
 

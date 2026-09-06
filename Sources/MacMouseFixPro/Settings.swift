@@ -28,6 +28,11 @@ enum MouseAction: String, CaseIterable, Codable {
     case screenshotArea = "Screenshot Area"
     case lockScreen = "Lock Screen"
     case middleClick = "Middle Click"
+    case volumeUp = "Volume Up"
+    case volumeDown = "Volume Down"
+    case mute = "Mute"
+    case previousApp = "Previous App"
+    case nextApp = "Next App"
     case disabled = "Disabled"
 
     var menuTitle: String {
@@ -59,13 +64,46 @@ enum MouseAction: String, CaseIterable, Codable {
         case .screenshotArea: return "区域截图"
         case .lockScreen: return "锁定屏幕"
         case .middleClick: return "中键点击"
+        case .volumeUp: return "增大音量"
+        case .volumeDown: return "减小音量"
+        case .mute: return "静音 / 取消静音"
+        case .previousApp: return "上一个 App"
+        case .nextApp: return "下一个 App"
         case .disabled: return "禁用"
         }
     }
 }
 
+enum ScrollGestureDirection: String, CaseIterable, Codable {
+    case up
+    case down
+
+    var menuTitle: String {
+        switch self {
+        case .up: return "滚轮向上"
+        case .down: return "滚轮向下"
+        }
+    }
+}
+
+struct ButtonScrollGesture: Codable, Equatable {
+    var upAction: MouseAction
+    var downAction: MouseAction
+
+    func action(for direction: ScrollGestureDirection) -> MouseAction {
+        direction == .up ? upAction : downAction
+    }
+
+    mutating func setAction(_ action: MouseAction, for direction: ScrollGestureDirection) {
+        switch direction {
+        case .up: upAction = action
+        case .down: downAction = action
+        }
+    }
+}
+
 struct MouseSettings: Codable, Equatable {
-    static let currentVersion = 3
+    static let currentVersion = 4
 
     var settingsVersion = MouseSettings.currentVersion
     var enabled = true
@@ -79,6 +117,7 @@ struct MouseSettings: Codable, Equatable {
     var pointerSmoothness = 0.28
     var auxiliaryButton1PhysicalID = 3
     var auxiliaryButton2PhysicalID = 4
+    var buttonScrollGestures = MouseSettings.defaultButtonScrollGestures
 
     static let configurableButtons = [2, 3, 4]
 
@@ -86,6 +125,11 @@ struct MouseSettings: Codable, Equatable {
         2: .missionControl,
         3: .back,
         4: .forward
+    ]
+
+    static let defaultButtonScrollGestures: [Int: ButtonScrollGesture] = [
+        3: ButtonScrollGesture(upAction: .volumeUp, downAction: .volumeDown),
+        4: ButtonScrollGesture(upAction: .zoomIn, downAction: .zoomOut)
     ]
 
     init() {}
@@ -141,6 +185,32 @@ struct MouseSettings: Codable, Equatable {
         buttonActions[button] = action
     }
 
+    func scrollGestureAction(
+        forButton button: Int,
+        direction: ScrollGestureDirection
+    ) -> MouseAction {
+        guard button == 3 || button == 4 else { return .passThrough }
+        return buttonScrollGestures[button]?.action(for: direction) ?? .passThrough
+    }
+
+    func hasScrollGesture(forButton button: Int) -> Bool {
+        ScrollGestureDirection.allCases.contains {
+            scrollGestureAction(forButton: button, direction: $0) != .passThrough
+        }
+    }
+
+    mutating func setScrollGestureAction(
+        _ action: MouseAction,
+        forButton button: Int,
+        direction: ScrollGestureDirection
+    ) {
+        guard button == 3 || button == 4 else { return }
+        var gesture = buttonScrollGestures[button]
+            ?? ButtonScrollGesture(upAction: .passThrough, downAction: .passThrough)
+        gesture.setAction(action, for: direction)
+        buttonScrollGestures[button] = gesture
+    }
+
     static func displayName(forCGButton button: Int) -> String {
         switch button {
         case 2: return "滚轮按下"
@@ -166,6 +236,7 @@ struct MouseSettings: Codable, Equatable {
         case pointerSmoothness
         case auxiliaryButton1PhysicalID
         case auxiliaryButton2PhysicalID
+        case buttonScrollGestures
     }
 
     init(from decoder: Decoder) throws {
@@ -176,7 +247,7 @@ struct MouseSettings: Codable, Equatable {
         scrollSpeed = try container.decodeIfPresent(Double.self, forKey: .scrollSpeed) ?? 1.15
         smoothScroll = try container.decodeIfPresent(Bool.self, forKey: .smoothScroll) ?? true
         smoothness = try container.decodeIfPresent(Double.self, forKey: .smoothness) ?? 0.88
-        if settingsVersion >= MouseSettings.currentVersion {
+        if settingsVersion >= 2 {
             pointerSmoothing = try container.decodeIfPresent(Bool.self, forKey: .pointerSmoothing) ?? false
         } else {
             pointerSmoothing = false
@@ -185,6 +256,21 @@ struct MouseSettings: Codable, Equatable {
         pointerSmoothness = try container.decodeIfPresent(Double.self, forKey: .pointerSmoothness) ?? 0.28
         auxiliaryButton1PhysicalID = try container.decodeIfPresent(Int.self, forKey: .auxiliaryButton1PhysicalID) ?? 3
         auxiliaryButton2PhysicalID = try container.decodeIfPresent(Int.self, forKey: .auxiliaryButton2PhysicalID) ?? 4
+        let storedScrollGestures = try container.decodeIfPresent(
+            [Int: ButtonScrollGesture].self,
+            forKey: .buttonScrollGestures
+        )
+        if let storedScrollGestures {
+            var gestures = MouseSettings.defaultButtonScrollGestures
+            for button in [3, 4] {
+                if let gesture = storedScrollGestures[button] {
+                    gestures[button] = gesture
+                }
+            }
+            buttonScrollGestures = gestures
+        } else {
+            buttonScrollGestures = MouseSettings.defaultButtonScrollGestures
+        }
 
         let storedActions = try container.decodeIfPresent([Int: MouseAction].self, forKey: .buttonActions)
         if let storedActions, !storedActions.isEmpty {
@@ -235,6 +321,7 @@ struct MouseSettings: Codable, Equatable {
         try container.encode(pointerSmoothness, forKey: .pointerSmoothness)
         try container.encode(auxiliaryButton1PhysicalID, forKey: .auxiliaryButton1PhysicalID)
         try container.encode(auxiliaryButton2PhysicalID, forKey: .auxiliaryButton2PhysicalID)
+        try container.encode(buttonScrollGestures, forKey: .buttonScrollGestures)
     }
 }
 

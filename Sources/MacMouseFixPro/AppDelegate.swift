@@ -36,6 +36,25 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         false
     }
 
+    func applicationShouldHandleReopen(_ sender: NSApplication, hasVisibleWindows flag: Bool) -> Bool {
+        if !flag {
+            showSettings()
+        }
+        return true
+    }
+
+    func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
+        let menu = NSMenu()
+        let openItem = NSMenuItem(
+            title: "打开设置窗口",
+            action: #selector(showSettings),
+            keyEquivalent: ""
+        )
+        openItem.target = self
+        menu.addItem(openItem)
+        return menu
+    }
+
     func applicationWillTerminate(_ notification: Notification) {
         agent.stopRunning()
     }
@@ -96,6 +115,17 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
                 : ""
             let item = NSMenuItem(
                 title: "\(MouseSettings.displayName(forCGButton: button))\(physicalSuffix)：\(action.menuTitle)",
+                action: nil,
+                keyEquivalent: ""
+            )
+            item.isEnabled = false
+            menu.addItem(item)
+        }
+        for button in [3, 4] {
+            let upAction = store.settings.scrollGestureAction(forButton: button, direction: .up)
+            let downAction = store.settings.scrollGestureAction(forButton: button, direction: .down)
+            let item = NSMenuItem(
+                title: "\(MouseSettings.displayName(forCGButton: button)) + 滚轮：↑ \(upAction.menuTitle) / ↓ \(downAction.menuTitle)",
                 action: nil,
                 keyEquivalent: ""
             )

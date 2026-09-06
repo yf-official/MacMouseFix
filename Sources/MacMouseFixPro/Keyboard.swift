@@ -110,4 +110,24 @@ enum Keyboard {
     static func lockScreen() {
         press(12, modifiers: [.maskCommand, .maskControl])
     }
+
+    static func volumeUp() {
+        press(72)
+    }
+
+    static func volumeDown() {
+        press(73)
+    }
+
+    static func mute() {
+        press(74)
+    }
+
+    static func previousApp() {
+        press(48, modifiers: [.maskCommand, .maskShift])
+    }
+
+    static func nextApp() {
+        press(48, modifiers: .maskCommand)
+    }
 }
