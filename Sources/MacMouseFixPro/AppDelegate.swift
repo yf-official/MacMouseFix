@@ -91,8 +91,11 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
         for button in MouseSettings.configurableButtons {
             let action = store.settings.action(forButton: button)
+            let physicalSuffix = button > 2
+                ? "（编号 \(store.settings.physicalButton(forLogicalButton: button) ?? button)）"
+                : ""
             let item = NSMenuItem(
-                title: "\(MouseSettings.displayName(forCGButton: button))：\(action.menuTitle)",
+                title: "\(MouseSettings.displayName(forCGButton: button))\(physicalSuffix)：\(action.menuTitle)",
                 action: nil,
                 keyEquivalent: ""
             )

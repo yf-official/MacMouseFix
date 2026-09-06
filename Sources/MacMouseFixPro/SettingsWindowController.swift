@@ -1,6 +1,6 @@
 import AppKit
 
-final class SettingsWindowController: NSWindowController {
+final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let store = SettingsStore.shared
 
     private let statusLabel = NSTextField(labelWithString: "")
@@ -17,7 +17,10 @@ final class SettingsWindowController: NSWindowController {
     private let smoothnessValueLabel = NSTextField(labelWithString: "88%")
     private let pointerSpeedValueLabel = NSTextField(labelWithString: "1.0x")
     private let pointerSmoothnessValueLabel = NSTextField(labelWithString: "28%")
+    private let buttonDiagnosticLabel = NSTextField(labelWithString: "最近检测：请按一下鼠标侧键。")
     private var actionPopups: [Int: NSPopUpButton] = [:]
+    private var physicalIDPopups: [Int: NSPopUpButton] = [:]
+    private var diagnosticTimer: Timer?
 
     convenience init() {
         let window = NSWindow(
@@ -30,12 +33,28 @@ final class SettingsWindowController: NSWindowController {
         window.title = "Mac Mouse Fix Pro"
         window.center()
         self.init(window: window)
+        window.delegate = self
         buildUI()
         reload()
+        startDiagnosticPolling()
+    }
+
+    deinit {
+        diagnosticTimer?.invalidate()
     }
 
     func setStatus(_ text: String) {
         statusLabel.stringValue = text
+    }
+
+    override func showWindow(_ sender: Any?) {
+        super.showWindow(sender)
+        startDiagnosticPolling()
+    }
+
+    func windowWillClose(_ notification: Notification) {
+        diagnosticTimer?.invalidate()
+        diagnosticTimer = nil
     }
 
     private func buildUI() {
@@ -152,8 +171,30 @@ final class SettingsWindowController: NSWindowController {
             popup.target = self
             popup.action = #selector(changeButtonAction(_:))
             actionPopups[button] = popup
-            stack.addArrangedSubview(mappingRow(label: label(forButton: button), detail: detail(forButton: button), popup: popup))
+
+            var physicalPopup: NSPopUpButton?
+            if button > 2 {
+                let idPopup = NSPopUpButton()
+                idPopup.tag = button
+                configurePhysicalIDPopup(idPopup)
+                idPopup.target = self
+                idPopup.action = #selector(changePhysicalButton(_:))
+                physicalIDPopups[button] = idPopup
+                physicalPopup = idPopup
+            }
+
+            stack.addArrangedSubview(mappingRow(
+                label: label(forButton: button),
+                detail: detail(forButton: button),
+                physicalPopup: physicalPopup,
+                actionPopup: popup
+            ))
         }
+
+
+        buttonDiagnosticLabel.textColor = .secondaryLabelColor
+        buttonDiagnosticLabel.maximumNumberOfLines = 2
+        stack.addArrangedSubview(buttonDiagnosticLabel)
 
         constrain(stack, in: box)
         return box
@@ -249,7 +290,12 @@ final class SettingsWindowController: NSWindowController {
         return box
     }
 
-    private func mappingRow(label: String, detail: String, popup: NSPopUpButton) -> NSView {
+    private func mappingRow(
+        label: String,
+        detail: String,
+        physicalPopup: NSPopUpButton?,
+        actionPopup: NSPopUpButton
+    ) -> NSView {
         let row = NSStackView()
         row.spacing = 12
         row.alignment = .centerY
@@ -263,11 +309,16 @@ final class SettingsWindowController: NSWindowController {
         subtitle.textColor = .secondaryLabelColor
         labels.addArrangedSubview(title)
         labels.addArrangedSubview(subtitle)
-        labels.widthAnchor.constraint(equalToConstant: 190).isActive = true
+        labels.widthAnchor.constraint(equalToConstant: 175).isActive = true
 
-        popup.widthAnchor.constraint(equalToConstant: 250).isActive = true
         row.addArrangedSubview(labels)
-        row.addArrangedSubview(popup)
+        if let physicalPopup {
+            physicalPopup.toolTip = "鼠标驱动上报的底层按钮编号"
+            physicalPopup.widthAnchor.constraint(equalToConstant: 96).isActive = true
+            row.addArrangedSubview(physicalPopup)
+        }
+        actionPopup.widthAnchor.constraint(equalToConstant: 215).isActive = true
+        row.addArrangedSubview(actionPopup)
         return row
     }
 
@@ -293,6 +344,14 @@ final class SettingsWindowController: NSWindowController {
         }
     }
 
+    private func configurePhysicalIDPopup(_ popup: NSPopUpButton) {
+        popup.removeAllItems()
+        for physicalID in 3...31 {
+            popup.addItem(withTitle: "编号 \(physicalID)")
+            popup.lastItem?.representedObject = physicalID
+        }
+    }
+
     private func label(forButton button: Int) -> String {
         MouseSettings.displayName(forCGButton: button)
     }
@@ -300,8 +359,8 @@ final class SettingsWindowController: NSWindowController {
     private func detail(forButton button: Int) -> String {
         switch button {
         case 2: return "滚轮按下，也就是中键"
-        case 3: return "第一个侧边辅助键"
-        case 4: return "第二个侧边辅助键"
+        case 3: return "第一个侧键，可校准底层编号"
+        case 4: return "第二个侧键，可校准底层编号"
         default: return "未使用"
         }
     }
@@ -334,6 +393,12 @@ final class SettingsWindowController: NSWindowController {
         for (button, popup) in actionPopups {
             select(settings.action(forButton: button), in: popup)
         }
+        for (logicalButton, popup) in physicalIDPopups {
+            if let physicalButton = settings.physicalButton(forLogicalButton: logicalButton) {
+                selectPhysicalButton(physicalButton, in: popup)
+            }
+        }
+        refreshButtonDiagnostic()
 
         permissionLabel.stringValue = PermissionManager.isAccessibilityTrusted
             ? "辅助功能权限已授权。"
@@ -363,6 +428,14 @@ final class SettingsWindowController: NSWindowController {
         let button = sender.tag
         store.update { settings in
             settings.setAction(action, forButton: button)
+        }
+    }
+
+    @objc private func changePhysicalButton(_ sender: NSPopUpButton) {
+        guard let physicalButton = sender.selectedItem?.representedObject as? Int else { return }
+        let logicalButton = sender.tag
+        store.update { settings in
+            settings.setPhysicalButton(physicalButton, forLogicalButton: logicalButton)
         }
     }
 
@@ -409,6 +482,35 @@ final class SettingsWindowController: NSWindowController {
                 popup.selectItem(at: index)
                 return
             }
+        }
+    }
+
+    private func selectPhysicalButton(_ physicalButton: Int, in popup: NSPopUpButton) {
+        for index in 0..<popup.numberOfItems {
+            if popup.item(at: index)?.representedObject as? Int == physicalButton {
+                popup.selectItem(at: index)
+                return
+            }
+        }
+    }
+
+    private func startDiagnosticPolling() {
+        diagnosticTimer?.invalidate()
+        diagnosticTimer = Timer.scheduledTimer(withTimeInterval: 0.6, repeats: true) { [weak self] _ in
+            self?.refreshButtonDiagnostic()
+        }
+    }
+
+    private func refreshButtonDiagnostic() {
+        guard let diagnostic = RuntimeStatusStore.latestButton() else {
+            buttonDiagnosticLabel.stringValue = "最近检测：请按一下鼠标侧键，再根据显示的编号完成校准。"
+            return
+        }
+
+        if let logicalButton = diagnostic.logicalButton, let action = diagnostic.action {
+            buttonDiagnosticLabel.stringValue = "最近检测：底层编号 \(diagnostic.physicalButton) → \(MouseSettings.displayName(forCGButton: logicalButton)) → \(action.menuTitle)"
+        } else {
+            buttonDiagnosticLabel.stringValue = "最近检测：底层编号 \(diagnostic.physicalButton) 尚未绑定，请把辅助按键 1 或 2 的编号改为 \(diagnostic.physicalButton)。"
         }
     }
 }

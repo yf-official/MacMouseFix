@@ -10,6 +10,7 @@ final class SmoothScrollController {
     private var carryY = 0.0
     private var latestSmoothness = 0.88
     private var timer: DispatchSourceTimer?
+    private var timerCreationPending = false
     private let source = CGEventSource(stateID: .hidSystemState)
 
     init(marker: Int64) {
@@ -47,23 +48,51 @@ final class SmoothScrollController {
         carryY = 0
         lock.unlock()
 
-        DispatchQueue.main.async {
-            self.timer?.cancel()
-            self.timer = nil
+        if Thread.isMainThread {
+            cancelTimer()
+        } else {
+            DispatchQueue.main.async {
+                self.cancelTimer()
+            }
         }
     }
 
+    private func cancelTimer() {
+        timer?.cancel()
+        timer = nil
+    }
+
     private func ensureTimer() {
-        DispatchQueue.main.async {
-            guard self.timer == nil else { return }
-            let timer = DispatchSource.makeTimerSource(queue: .main)
-            timer.schedule(deadline: .now(), repeating: .milliseconds(8), leeway: .milliseconds(1))
-            timer.setEventHandler { [weak self] in
-                self?.tick()
-            }
-            self.timer = timer
-            timer.resume()
+        if Thread.isMainThread {
+            startTimerIfNeeded()
+            return
         }
+
+        lock.lock()
+        guard !timerCreationPending else {
+            lock.unlock()
+            return
+        }
+        timerCreationPending = true
+        lock.unlock()
+
+        DispatchQueue.main.async {
+            self.lock.lock()
+            self.timerCreationPending = false
+            self.lock.unlock()
+            self.startTimerIfNeeded()
+        }
+    }
+
+    private func startTimerIfNeeded() {
+        guard timer == nil else { return }
+        let timer = DispatchSource.makeTimerSource(queue: .main)
+        timer.schedule(deadline: .now(), repeating: .milliseconds(8), leeway: .milliseconds(1))
+        timer.setEventHandler { [weak self] in
+            self?.tick()
+        }
+        self.timer = timer
+        timer.resume()
     }
 
     private func tick() {
@@ -103,8 +132,7 @@ final class SmoothScrollController {
         }
 
         if output.shouldStop {
-            timer?.cancel()
-            timer = nil
+            cancelTimer()
         }
     }
 

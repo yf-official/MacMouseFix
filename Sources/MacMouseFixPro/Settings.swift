@@ -65,7 +65,7 @@ enum MouseAction: String, CaseIterable, Codable {
 }
 
 struct MouseSettings: Codable, Equatable {
-    static let currentVersion = 2
+    static let currentVersion = 3
 
     var settingsVersion = MouseSettings.currentVersion
     var enabled = true
@@ -77,6 +77,8 @@ struct MouseSettings: Codable, Equatable {
     var pointerSmoothing = false
     var pointerSpeed = 1.0
     var pointerSmoothness = 0.28
+    var auxiliaryButton1PhysicalID = 3
+    var auxiliaryButton2PhysicalID = 4
 
     static let configurableButtons = [2, 3, 4]
 
@@ -91,6 +93,47 @@ struct MouseSettings: Codable, Equatable {
     func action(forButton button: Int) -> MouseAction {
         guard Self.configurableButtons.contains(button) else { return .passThrough }
         return buttonActions[button] ?? .passThrough
+    }
+
+    func logicalButton(forPhysicalButton physicalButton: Int) -> Int? {
+        switch physicalButton {
+        case 2:
+            return 2
+        case auxiliaryButton1PhysicalID:
+            return 3
+        case auxiliaryButton2PhysicalID:
+            return 4
+        default:
+            return nil
+        }
+    }
+
+    func physicalButton(forLogicalButton logicalButton: Int) -> Int? {
+        switch logicalButton {
+        case 2: return 2
+        case 3: return auxiliaryButton1PhysicalID
+        case 4: return auxiliaryButton2PhysicalID
+        default: return nil
+        }
+    }
+
+    mutating func setPhysicalButton(_ physicalButton: Int, forLogicalButton logicalButton: Int) {
+        guard (3...31).contains(physicalButton) else { return }
+
+        switch logicalButton {
+        case 3:
+            if physicalButton == auxiliaryButton2PhysicalID {
+                auxiliaryButton2PhysicalID = auxiliaryButton1PhysicalID
+            }
+            auxiliaryButton1PhysicalID = physicalButton
+        case 4:
+            if physicalButton == auxiliaryButton1PhysicalID {
+                auxiliaryButton1PhysicalID = auxiliaryButton2PhysicalID
+            }
+            auxiliaryButton2PhysicalID = physicalButton
+        default:
+            break
+        }
     }
 
     mutating func setAction(_ action: MouseAction, forButton button: Int) {
@@ -121,6 +164,8 @@ struct MouseSettings: Codable, Equatable {
         case pointerSmoothing
         case pointerSpeed
         case pointerSmoothness
+        case auxiliaryButton1PhysicalID
+        case auxiliaryButton2PhysicalID
     }
 
     init(from decoder: Decoder) throws {
@@ -138,6 +183,8 @@ struct MouseSettings: Codable, Equatable {
         }
         pointerSpeed = try container.decodeIfPresent(Double.self, forKey: .pointerSpeed) ?? 1.0
         pointerSmoothness = try container.decodeIfPresent(Double.self, forKey: .pointerSmoothness) ?? 0.28
+        auxiliaryButton1PhysicalID = try container.decodeIfPresent(Int.self, forKey: .auxiliaryButton1PhysicalID) ?? 3
+        auxiliaryButton2PhysicalID = try container.decodeIfPresent(Int.self, forKey: .auxiliaryButton2PhysicalID) ?? 4
 
         let storedActions = try container.decodeIfPresent([Int: MouseAction].self, forKey: .buttonActions)
         if let storedActions, !storedActions.isEmpty {
@@ -165,6 +212,12 @@ struct MouseSettings: Codable, Equatable {
         smoothness = max(0.0, min(1.0, smoothness))
         pointerSpeed = max(0.5, min(2.0, pointerSpeed))
         pointerSmoothness = max(0.0, min(0.8, pointerSmoothness))
+        if !(3...31).contains(auxiliaryButton1PhysicalID) {
+            auxiliaryButton1PhysicalID = 3
+        }
+        if !(3...31).contains(auxiliaryButton2PhysicalID) || auxiliaryButton2PhysicalID == auxiliaryButton1PhysicalID {
+            auxiliaryButton2PhysicalID = auxiliaryButton1PhysicalID == 4 ? 3 : 4
+        }
         settingsVersion = MouseSettings.currentVersion
     }
 
@@ -180,6 +233,8 @@ struct MouseSettings: Codable, Equatable {
         try container.encode(pointerSmoothing, forKey: .pointerSmoothing)
         try container.encode(pointerSpeed, forKey: .pointerSpeed)
         try container.encode(pointerSmoothness, forKey: .pointerSmoothness)
+        try container.encode(auxiliaryButton1PhysicalID, forKey: .auxiliaryButton1PhysicalID)
+        try container.encode(auxiliaryButton2PhysicalID, forKey: .auxiliaryButton2PhysicalID)
     }
 }
 

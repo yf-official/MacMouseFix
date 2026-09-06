@@ -5,6 +5,9 @@ import Foundation
 enum HelperDaemon {
     private static var lockDescriptor: Int32 = -1
     private static var parentPID: Int32?
+    private static var shutdownSources: [DispatchSourceSignal] = []
+    private static var healthTimer: Timer?
+    private static var isShuttingDown = false
 
     static func run() {
         parentPID = parseParentPID()
@@ -19,6 +22,13 @@ enum HelperDaemon {
         engine.onStatusChange = { status in
             FileLogger.write(status)
         }
+        engine.onButtonEvent = { physicalButton, logicalButton, action in
+            RuntimeStatusStore.recordButton(
+                physicalButton: physicalButton,
+                logicalButton: logicalButton,
+                action: action
+            )
+        }
 
         guard PermissionManager.isAccessibilityTrusted else {
             FileLogger.write("后台代理缺少辅助功能权限，无法启动鼠标引擎。")
@@ -26,18 +36,19 @@ enum HelperDaemon {
         }
 
         engine.start(with: store.settings)
+        installSignalHandlers(engine: engine)
 
-        let timer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { _ in
+        healthTimer = Timer.scheduledTimer(withTimeInterval: 0.8, repeats: true) { _ in
             if shouldStop() || parentProcessEnded() {
-                engine.stop()
-                cleanupFiles()
-                exit(0)
+                shutdown(engine: engine)
             }
             if store.reloadFromDisk() {
                 engine.update(settings: store.settings)
             }
         }
-        RunLoop.main.add(timer, forMode: .common)
+        if let healthTimer {
+            RunLoop.main.add(healthTimer, forMode: .common)
+        }
         RunLoop.main.run()
     }
 
@@ -94,19 +105,56 @@ enum HelperDaemon {
         try? FileManager.default.removeItem(at: stopURL)
     }
 
+    private static func installSignalHandlers(engine: MouseEngine) {
+        for signalNumber in [SIGTERM, SIGINT] {
+            signal(signalNumber, SIG_IGN)
+            let source = DispatchSource.makeSignalSource(signal: signalNumber, queue: .main)
+            source.setEventHandler {
+                shutdown(engine: engine)
+            }
+            source.resume()
+            shutdownSources.append(source)
+        }
+    }
+
+    private static func shutdown(engine: MouseEngine) {
+        guard !isShuttingDown else { return }
+        isShuttingDown = true
+        healthTimer?.invalidate()
+        healthTimer = nil
+        engine.stop()
+        cleanupFiles()
+        exit(0)
+    }
+
     private static func cleanupFiles() {
         removeStopFile()
         try? FileManager.default.removeItem(at: pidURL)
+        if lockDescriptor >= 0 {
+            flock(lockDescriptor, LOCK_UN)
+            close(lockDescriptor)
+            lockDescriptor = -1
+        }
     }
 }
 
 enum FileLogger {
+    private static let maximumLogSize: UInt64 = 512 * 1024
+
     static func write(_ message: String) {
         let directory = SettingsStore.settingsURL.deletingLastPathComponent()
         try? FileManager.default.createDirectory(at: directory, withIntermediateDirectories: true)
         let url = directory.appendingPathComponent("helper.log")
         let line = "\(Date()) \(message)\n"
         guard let data = line.data(using: .utf8) else { return }
+
+        if
+            let attributes = try? FileManager.default.attributesOfItem(atPath: url.path),
+            let size = attributes[.size] as? UInt64,
+            size > maximumLogSize
+        {
+            try? FileManager.default.removeItem(at: url)
+        }
 
         if FileManager.default.fileExists(atPath: url.path) {
             if let handle = try? FileHandle(forWritingTo: url) {

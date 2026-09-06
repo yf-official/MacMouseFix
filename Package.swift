@@ -16,6 +16,10 @@ let package = Package(
                 .linkedFramework("AppKit"),
                 .linkedFramework("ApplicationServices")
             ]
+        ),
+        .testTarget(
+            name: "MacMouseFixProTests",
+            dependencies: ["MacMouseFixPro"]
         )
     ]
 )

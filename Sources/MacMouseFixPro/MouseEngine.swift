@@ -5,6 +5,7 @@ final class MouseEngine {
     static let shared = MouseEngine()
 
     var onStatusChange: ((String) -> Void)?
+    var onButtonEvent: ((Int, Int?, MouseAction?) -> Void)?
 
     private var eventTap: CFMachPort?
     private var runLoopSource: CFRunLoopSource?
@@ -13,29 +14,29 @@ final class MouseEngine {
     private let syntheticScrollMarker: Int64 = 0x4D4D4650
     private lazy var smoothScroller = SmoothScrollController(marker: syntheticScrollMarker)
     private let pointerSmoother = PointerSmoother()
+    private var activeMask: CGEventMask = 0
+    private var pressedButtons = Set<Int>()
 
     private init() {}
 
     func start(with settings: MouseSettings) {
-        update(settings: settings)
+        settingsQueue.sync {
+            self.settings = settings
+        }
 
         guard eventTap == nil else {
-            setTapEnabled(settings.enabled)
+            update(settings: settings)
             return
         }
 
-        let mask =
-            (1 << CGEventType.mouseMoved.rawValue) |
-            (1 << CGEventType.leftMouseDragged.rawValue) |
-            (1 << CGEventType.rightMouseDragged.rawValue) |
-            (1 << CGEventType.otherMouseDragged.rawValue) |
-            (1 << CGEventType.otherMouseDown.rawValue) |
-            (1 << CGEventType.otherMouseUp.rawValue) |
-            (1 << CGEventType.scrollWheel.rawValue)
+        installEventTap(mask: eventMask(for: settings), enabled: settings.enabled)
+    }
+
+    private func installEventTap(mask: CGEventMask, enabled: Bool) {
 
         let callback: CGEventTapCallBack = { proxy, type, event, refcon in
             guard let refcon else {
-                return Unmanaged.passRetained(event)
+                return Unmanaged.passUnretained(event)
             }
             let engine = Unmanaged<MouseEngine>.fromOpaque(refcon).takeUnretainedValue()
             return engine.handle(proxy: proxy, type: type, event: event)
@@ -54,11 +55,12 @@ final class MouseEngine {
         }
 
         eventTap = tap
+        activeMask = mask
         runLoopSource = CFMachPortCreateRunLoopSource(kCFAllocatorDefault, tap, 0)
         if let runLoopSource {
             CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
         }
-        setTapEnabled(settings.enabled)
+        setTapEnabled(enabled)
         onStatusChange?("鼠标引擎正在运行。")
     }
 
@@ -71,6 +73,8 @@ final class MouseEngine {
         }
         runLoopSource = nil
         eventTap = nil
+        activeMask = 0
+        pressedButtons.removeAll()
         smoothScroller.reset()
         pointerSmoother.reset()
         onStatusChange?("鼠标引擎已停止。")
@@ -86,7 +90,45 @@ final class MouseEngine {
         if !settings.enabled || !settings.pointerSmoothing {
             pointerSmoother.reset()
         }
+
+        let desiredMask = eventMask(for: settings)
+        if eventTap != nil, desiredMask != activeMask {
+            removeEventTap()
+            installEventTap(mask: desiredMask, enabled: settings.enabled)
+            return
+        }
         setTapEnabled(settings.enabled)
+    }
+
+    private func eventMask(for settings: MouseSettings) -> CGEventMask {
+        var mask = eventBit(.otherMouseDown) |
+            eventBit(.otherMouseUp) |
+            eventBit(.scrollWheel)
+
+        if settings.pointerSmoothing {
+            mask |= eventBit(.mouseMoved) |
+                eventBit(.leftMouseDragged) |
+                eventBit(.rightMouseDragged) |
+                eventBit(.otherMouseDragged)
+        }
+        return mask
+    }
+
+    private func eventBit(_ type: CGEventType) -> CGEventMask {
+        CGEventMask(1) << type.rawValue
+    }
+
+    private func removeEventTap() {
+        if let eventTap {
+            CGEvent.tapEnable(tap: eventTap, enable: false)
+        }
+        if let runLoopSource {
+            CFRunLoopRemoveSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
+        }
+        runLoopSource = nil
+        eventTap = nil
+        activeMask = 0
+        pressedButtons.removeAll()
     }
 
     private func setTapEnabled(_ enabled: Bool) {
@@ -104,51 +146,60 @@ final class MouseEngine {
             if let eventTap {
                 CGEvent.tapEnable(tap: eventTap, enable: true)
             }
-            return Unmanaged.passRetained(event)
+            pressedButtons.removeAll()
+            return Unmanaged.passUnretained(event)
+        }
+
+        if event.getIntegerValueField(.eventSourceUserData) == syntheticScrollMarker {
+            return Unmanaged.passUnretained(event)
         }
 
         let activeSettings = currentSettings()
         guard activeSettings.enabled else {
-            return Unmanaged.passRetained(event)
+            return Unmanaged.passUnretained(event)
         }
 
         switch type {
         case .mouseMoved, .leftMouseDragged, .rightMouseDragged, .otherMouseDragged:
             pointerSmoother.transform(event: event, settings: activeSettings)
-            return Unmanaged.passRetained(event)
+            return Unmanaged.passUnretained(event)
 
         case .otherMouseDown:
-            let button = Int(event.getIntegerValueField(.mouseEventButtonNumber))
-            let action = action(for: button, settings: activeSettings)
-            if action == .passThrough {
-                announce("\(MouseSettings.displayName(forCGButton: button))：保持原样")
-                return Unmanaged.passRetained(event)
+            let physicalButton = Int(event.getIntegerValueField(.mouseEventButtonNumber))
+            let logicalButton = activeSettings.logicalButton(forPhysicalButton: physicalButton)
+            let mappedAction = logicalButton.map { action(for: $0, settings: activeSettings) }
+            onButtonEvent?(physicalButton, logicalButton, mappedAction)
+            guard let logicalButton, let action = mappedAction else {
+                return Unmanaged.passUnretained(event)
             }
-            perform(action, button: button)
+            if action == .passThrough {
+                announce("\(MouseSettings.displayName(forCGButton: logicalButton))：保持原样")
+                return Unmanaged.passUnretained(event)
+            }
+            guard pressedButtons.insert(physicalButton).inserted else { return nil }
+            perform(action, button: logicalButton)
             return nil
 
         case .otherMouseUp:
-            let button = Int(event.getIntegerValueField(.mouseEventButtonNumber))
-            let action = action(for: button, settings: activeSettings)
-            return action == .passThrough ? Unmanaged.passRetained(event) : nil
+            let physicalButton = Int(event.getIntegerValueField(.mouseEventButtonNumber))
+            return pressedButtons.remove(physicalButton) == nil
+                ? Unmanaged.passUnretained(event)
+                : nil
 
         case .scrollWheel:
-            if event.getIntegerValueField(.eventSourceUserData) == syntheticScrollMarker {
-                return Unmanaged.passRetained(event)
-            }
             let isContinuous = event.getIntegerValueField(.scrollWheelEventIsContinuous) == 1
             if isContinuous {
-                return Unmanaged.passRetained(event)
+                return Unmanaged.passUnretained(event)
             }
             if activeSettings.smoothScroll && !isContinuous {
                 smoothScroller.enqueue(event: event, settings: activeSettings)
                 return nil
             }
             transformScroll(event, settings: activeSettings)
-            return Unmanaged.passRetained(event)
+            return Unmanaged.passUnretained(event)
 
         default:
-            return Unmanaged.passRetained(event)
+            return Unmanaged.passUnretained(event)
         }
     }
 
@@ -282,6 +333,8 @@ final class MouseEngine {
         )
         down.setIntegerValueField(.mouseEventButtonNumber, value: 2)
         up?.setIntegerValueField(.mouseEventButtonNumber, value: 2)
+        down.setIntegerValueField(.eventSourceUserData, value: syntheticScrollMarker)
+        up?.setIntegerValueField(.eventSourceUserData, value: syntheticScrollMarker)
         down.post(tap: .cghidEventTap)
         up?.post(tap: .cghidEventTap)
     }
