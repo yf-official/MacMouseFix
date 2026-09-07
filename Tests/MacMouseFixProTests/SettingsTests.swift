@@ -113,4 +113,40 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(released?.clickAction, .forward)
         XCTAssertEqual(released?.usedScrollGesture, false)
     }
+
+    func testMagnificationGestureHasCompleteLifecycle() {
+        var samples: [MagnificationGestureSimulator.Sample] = []
+        let simulator = MagnificationGestureSimulator { samples.append($0) }
+
+        XCTAssertTrue(simulator.update(action: .zoomIn, wheelDelta: 1, button: 4))
+        XCTAssertTrue(simulator.update(action: .zoomOut, wheelDelta: -2, button: 4))
+        simulator.end(for: 4)
+
+        XCTAssertEqual(samples.map(\.phase), [.began, .changed, .changed, .changed, .ended])
+        XCTAssertEqual(samples[2].magnification, 0.055, accuracy: 0.0001)
+        XCTAssertEqual(samples[3].magnification, -0.11, accuracy: 0.0001)
+        XCTAssertNil(simulator.activeButton)
+    }
+
+    func testMagnificationGestureIgnoresWrongButtonEnd() {
+        var samples: [MagnificationGestureSimulator.Sample] = []
+        let simulator = MagnificationGestureSimulator { samples.append($0) }
+
+        simulator.update(action: .zoomIn, wheelDelta: 1, button: 4)
+        simulator.end(for: 3)
+
+        XCTAssertEqual(simulator.activeButton, 4)
+        XCTAssertFalse(samples.contains { $0.phase == .ended })
+    }
+
+    func testMagnificationPulseIsSelfContained() {
+        var samples: [MagnificationGestureSimulator.Sample] = []
+        let simulator = MagnificationGestureSimulator { samples.append($0) }
+
+        simulator.pulse(action: .zoomOut)
+
+        XCTAssertEqual(samples.map(\.phase), [.began, .changed, .changed, .ended])
+        XCTAssertLessThan(samples[2].magnification, 0)
+        XCTAssertNil(simulator.activeButton)
+    }
 }

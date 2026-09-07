@@ -79,14 +79,6 @@ enum Keyboard {
         press(6, modifiers: [.maskCommand, .maskShift])
     }
 
-    static func zoomIn() {
-        press(24, modifiers: .maskCommand)
-    }
-
-    static func zoomOut() {
-        press(27, modifiers: .maskCommand)
-    }
-
     static func pageUp() {
         press(116)
     }

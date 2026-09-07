@@ -308,7 +308,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             }
         }
 
-        let note = NSTextField(labelWithString: "组合滚动触发后，本次侧键单击不会重复执行。选择“保持原样”可让该方向继续正常滚动。")
+        let note = NSTextField(labelWithString: "“捏合放大 / 缩小”会模拟触控板双指手势。组合滚动触发后，本次侧键单击不会重复执行。")
         note.textColor = .secondaryLabelColor
         note.maximumNumberOfLines = 2
         stack.addArrangedSubview(note)

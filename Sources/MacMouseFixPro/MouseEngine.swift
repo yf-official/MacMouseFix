@@ -14,6 +14,7 @@ final class MouseEngine {
     private let syntheticScrollMarker: Int64 = 0x4D4D4650
     private lazy var smoothScroller = SmoothScrollController(marker: syntheticScrollMarker)
     private let pointerSmoother = PointerSmoother()
+    private let magnificationGesture = MagnificationGestureSimulator()
     private var activeMask: CGEventMask = 0
     private var pressedButtons = Set<Int>()
     private var sideButtonGestures = SideButtonGestureTracker()
@@ -201,6 +202,7 @@ final class MouseEngine {
         case .otherMouseUp:
             let physicalButton = Int(event.getIntegerValueField(.mouseEventButtonNumber))
             if let heldButton = sideButtonGestures.release(physicalButton: physicalButton) {
+                magnificationGesture.end(for: heldButton.logicalButton)
                 if !heldButton.usedScrollGesture {
                     performDeferredClick(heldButton)
                 }
@@ -226,6 +228,17 @@ final class MouseEngine {
                 if gestureAction != .passThrough {
                     _ = sideButtonGestures.markActiveScrollGestureUsed()
                     smoothScroller.reset()
+                    let wheelDelta = scrollGestureDelta(for: event)
+                    if magnificationGesture.update(
+                        action: gestureAction,
+                        wheelDelta: wheelDelta,
+                        button: heldButton.logicalButton
+                    ) {
+                        let context = "\(MouseSettings.displayName(forCGButton: heldButton.logicalButton)) + \(direction.menuTitle)"
+                        announce("\(context)：\(gestureAction.menuTitle)")
+                        return nil
+                    }
+                    magnificationGesture.end(for: heldButton.logicalButton)
                     if shouldPerformGestureAction(
                         logicalButton: heldButton.logicalButton,
                         direction: direction
@@ -235,6 +248,7 @@ final class MouseEngine {
                     }
                     return nil
                 }
+                magnificationGesture.end(for: heldButton.logicalButton)
             }
             if activeSettings.smoothScroll && !isContinuous {
                 smoothScroller.enqueue(event: event, settings: activeSettings)
@@ -309,11 +323,11 @@ final class MouseEngine {
             Keyboard.redo()
             announce(prefix + "重做")
         case .zoomIn:
-            Keyboard.zoomIn()
-            announce(prefix + "放大")
+            magnificationGesture.pulse(action: .zoomIn)
+            announce(prefix + "捏合放大")
         case .zoomOut:
-            Keyboard.zoomOut()
-            announce(prefix + "缩小")
+            magnificationGesture.pulse(action: .zoomOut)
+            announce(prefix + "捏合缩小")
         case .pageUp:
             Keyboard.pageUp()
             announce(prefix + "上一页")
@@ -364,11 +378,15 @@ final class MouseEngine {
     }
 
     private func scrollGestureDirection(for event: CGEvent) -> ScrollGestureDirection? {
-        let lineDelta = event.getIntegerValueField(.scrollWheelEventDeltaAxis1)
-        let pointDelta = event.getIntegerValueField(.scrollWheelEventPointDeltaAxis1)
-        let delta = lineDelta != 0 ? lineDelta : pointDelta
+        let delta = scrollGestureDelta(for: event)
         guard delta != 0 else { return nil }
         return delta > 0 ? .up : .down
+    }
+
+    private func scrollGestureDelta(for event: CGEvent) -> Double {
+        let lineDelta = event.getIntegerValueField(.scrollWheelEventDeltaAxis1)
+        let pointDelta = event.getIntegerValueField(.scrollWheelEventPointDeltaAxis1)
+        return Double(lineDelta != 0 ? lineDelta : pointDelta)
     }
 
     private func shouldPerformGestureAction(
@@ -385,6 +403,7 @@ final class MouseEngine {
     }
 
     private func resetButtonState() {
+        magnificationGesture.end()
         pressedButtons.removeAll(keepingCapacity: true)
         sideButtonGestures.reset()
         lastGestureActionTimes.removeAll(keepingCapacity: true)
