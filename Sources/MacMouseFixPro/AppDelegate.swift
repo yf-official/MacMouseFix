@@ -74,20 +74,22 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
             if settings.language != self.activeLanguage {
                 self.activeLanguage = settings.language
-                let wasVisible = self.settingsWindowController?.window?.isVisible == true
-                self.settingsWindowController?.close()
-                self.settingsWindowController = nil
-                if wasVisible {
-                    self.showSettings()
+                DispatchQueue.main.async { [weak self] in
+                    guard let self else { return }
+                    self.settingsWindowController?.applyLanguageChange()
+                    self.settingsWindowController?.setStatus(self.text(
+                        "设置已保存，后台代理会自动应用。",
+                        "Settings saved. The background agent will apply them automatically."
+                    ))
                 }
             } else {
                 self.settingsWindowController?.reload()
+                self.settingsWindowController?.setStatus(self.text(
+                    "设置已保存，后台代理会自动应用。",
+                    "Settings saved. The background agent will apply them automatically."
+                ))
             }
 
-            self.settingsWindowController?.setStatus(self.text(
-                "设置已保存，后台代理会自动应用。",
-                "Settings saved. The background agent will apply them automatically."
-            ))
             self.rebuildStatusMenu()
         }
     }

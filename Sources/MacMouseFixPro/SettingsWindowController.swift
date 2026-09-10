@@ -23,6 +23,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private var physicalIDPopups: [Int: NSPopUpButton] = [:]
     private var gestureActionPopups: [String: NSPopUpButton] = [:]
     private var diagnosticTimer: Timer?
+    private var scrollView: NSScrollView?
 
     private var language: AppLanguage { store.settings.language }
 
@@ -65,8 +66,24 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         diagnosticTimer = nil
     }
 
+    func applyLanguageChange() {
+        let originalFrame = window?.frame
+        window?.disableScreenUpdatesUntilFlush()
+        buildUI()
+        reload()
+        if let originalFrame {
+            window?.setFrame(originalFrame, display: false)
+        }
+    }
+
     private func buildUI() {
         guard let contentView = window?.contentView else { return }
+
+        let previousScrollView = scrollView
+        let previousScrollOrigin = previousScrollView?.contentView.bounds.origin ?? .zero
+        actionPopups.removeAll(keepingCapacity: true)
+        physicalIDPopups.removeAll(keepingCapacity: true)
+        gestureActionPopups.removeAll(keepingCapacity: true)
 
         enabledCheckbox.title = text("启用鼠标优化", "Enable Mouse Optimization")
         naturalCheckbox.title = text("自然滚动方向", "Natural Scrolling Direction")
@@ -78,6 +95,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         scrollView.autohidesScrollers = false
         scrollView.drawsBackground = false
         scrollView.translatesAutoresizingMaskIntoConstraints = false
+        self.scrollView = scrollView
 
         let documentView = NSView()
         documentView.translatesAutoresizingMaskIntoConstraints = false
@@ -115,7 +133,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             "Configure buttons, button-wheel gestures, smooth scrolling, and pointer response. Trackpad scrolling remains unchanged."
         ))
         subtitle.textColor = .secondaryLabelColor
-        subtitle.maximumNumberOfLines = 2
+        configureWrappingLabel(subtitle, maximumNumberOfLines: 2)
 
         let headingText = NSStackView()
         headingText.orientation = .vertical
@@ -123,17 +141,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         headingText.addArrangedSubview(title)
         headingText.addArrangedSubview(subtitle)
 
-        let heading = NSStackView()
-        heading.spacing = 12
-        heading.alignment = .centerY
-        let iconView = NSImageView(image: NSApp.applicationIconImage)
-        iconView.imageScaling = .scaleProportionallyUpOrDown
-        iconView.widthAnchor.constraint(equalToConstant: 48).isActive = true
-        iconView.heightAnchor.constraint(equalToConstant: 48).isActive = true
-        heading.addArrangedSubview(iconView)
-        heading.addArrangedSubview(headingText)
-
-        root.addArrangedSubview(heading)
+        root.addArrangedSubview(headingText)
         root.addArrangedSubview(statusBox())
         root.addArrangedSubview(buttonMappingBox())
         root.addArrangedSubview(buttonScrollGestureBox())
@@ -145,8 +153,20 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             "The left and right buttons always keep their system behavior. Choose Quit and Stop Optimization from the menu bar to restore default input."
         ))
         note.textColor = .secondaryLabelColor
-        note.maximumNumberOfLines = 2
+        configureWrappingLabel(note, maximumNumberOfLines: 2)
         root.addArrangedSubview(note)
+
+        contentView.layoutSubtreeIfNeeded()
+        previousScrollView?.removeFromSuperview()
+
+        if previousScrollView != nil, let documentView = scrollView.documentView {
+            let maximumY = max(0, documentView.bounds.height - scrollView.contentView.bounds.height)
+            scrollView.contentView.scroll(to: NSPoint(
+                x: previousScrollOrigin.x,
+                y: min(previousScrollOrigin.y, maximumY)
+            ))
+            scrollView.reflectScrolledClipView(scrollView.contentView)
+        }
     }
 
     private func statusBox() -> NSView {
@@ -161,8 +181,9 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         box.contentView?.addSubview(stack)
 
         permissionLabel.textColor = .secondaryLabelColor
-        permissionLabel.maximumNumberOfLines = 2
+        configureWrappingLabel(permissionLabel, maximumNumberOfLines: 2)
         statusLabel.textColor = .secondaryLabelColor
+        configureWrappingLabel(statusLabel, maximumNumberOfLines: 2)
 
         enabledCheckbox.target = self
         enabledCheckbox.action = #selector(toggleEnabled)
@@ -236,7 +257,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
 
         buttonDiagnosticLabel.textColor = .secondaryLabelColor
-        buttonDiagnosticLabel.maximumNumberOfLines = 2
+        configureWrappingLabel(buttonDiagnosticLabel, maximumNumberOfLines: 2)
         stack.addArrangedSubview(buttonDiagnosticLabel)
 
         constrain(stack, in: box)
@@ -255,14 +276,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         title.font = .systemFont(ofSize: 13, weight: .semibold)
         let subtitle = NSTextField(labelWithString: detail)
         subtitle.textColor = .secondaryLabelColor
+        configureWrappingLabel(subtitle, maximumNumberOfLines: 2)
         labels.addArrangedSubview(title)
         labels.addArrangedSubview(subtitle)
-        labels.widthAnchor.constraint(equalToConstant: 190).isActive = true
+        labels.widthAnchor.constraint(equalToConstant: 240).isActive = true
 
         let value = NSTextField(labelWithString: text("保持原样", "Pass Through"))
         value.textColor = .secondaryLabelColor
         value.alignment = .center
-        value.widthAnchor.constraint(equalToConstant: 250).isActive = true
+        value.widthAnchor.constraint(equalToConstant: 200).isActive = true
         row.addArrangedSubview(labels)
         row.addArrangedSubview(value)
         return row
@@ -321,7 +343,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             "Higher smoothness splits each wheel notch into finer pixel scrolling and keeps brief momentum after the wheel stops."
         ))
         helper.textColor = .secondaryLabelColor
-        helper.maximumNumberOfLines = 2
+        configureWrappingLabel(helper, maximumNumberOfLines: 2)
         stack.addArrangedSubview(helper)
 
         constrain(stack, in: box)
@@ -365,7 +387,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             "Pinch zoom actions simulate a two-finger trackpad gesture. Once a wheel gesture starts, the original side-button click is suppressed."
         ))
         note.textColor = .secondaryLabelColor
-        note.maximumNumberOfLines = 2
+        configureWrappingLabel(note, maximumNumberOfLines: 2)
         stack.addArrangedSubview(note)
 
         constrain(stack, in: box)
@@ -399,7 +421,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             "Reduces small pointer jitter from mechanical mice. High values add latency; 20%-40% is recommended. Disable it if trackpad movement feels affected."
         ))
         helper.textColor = .secondaryLabelColor
-        helper.maximumNumberOfLines = 3
+        configureWrappingLabel(helper, maximumNumberOfLines: 3)
         stack.addArrangedSubview(helper)
 
         constrain(stack, in: box)
@@ -423,9 +445,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         title.font = .systemFont(ofSize: 13, weight: .semibold)
         let subtitle = NSTextField(labelWithString: detail)
         subtitle.textColor = .secondaryLabelColor
+        configureWrappingLabel(subtitle, maximumNumberOfLines: 2)
         labels.addArrangedSubview(title)
         labels.addArrangedSubview(subtitle)
-        labels.widthAnchor.constraint(equalToConstant: 160).isActive = true
+        labels.widthAnchor.constraint(equalToConstant: 210).isActive = true
 
         row.addArrangedSubview(labels)
         if let physicalPopup {
@@ -525,6 +548,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             stack.topAnchor.constraint(equalTo: contentView.topAnchor, constant: 14),
             stack.bottomAnchor.constraint(equalTo: contentView.bottomAnchor, constant: -14)
         ])
+    }
+
+    private func configureWrappingLabel(
+        _ label: NSTextField,
+        maximumNumberOfLines: Int
+    ) {
+        label.maximumNumberOfLines = maximumNumberOfLines
+        label.lineBreakMode = .byWordWrapping
+        label.setContentCompressionResistancePriority(.defaultLow, for: .horizontal)
     }
 
     func reload() {

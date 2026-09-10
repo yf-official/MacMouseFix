@@ -5,88 +5,87 @@
 <h1 align="center">Mac Mouse Fix Pro</h1>
 
 <p align="center">
-  一款面向第三方鼠标的原生 macOS 优化工具。让普通鼠标拥有更丝滑的滚动、可配置的侧键，以及接近触控板的组合手势体验。
+  A native macOS utility that brings smooth scrolling, reliable side-button remapping,
+  and trackpad-style gestures to third-party mice.
 </p>
 
 <p align="center">
   <img alt="Platform" src="https://img.shields.io/badge/macOS-13.0%2B-111111?logo=apple">
   <img alt="Swift" src="https://img.shields.io/badge/Swift-5.9-F05138?logo=swift&logoColor=white">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.4.0-0969da">
-  <img alt="Interface" src="https://img.shields.io/badge/interface-中文%20%7C%20English-2da44e">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.4.1-0969da">
+  <img alt="Interface" src="https://img.shields.io/badge/languages-English%20%7C%20简体中文-2da44e">
 </p>
 
 <p align="center">
-  <a href="https://github.com/yf-official/MacMouseFixPro/releases/latest"><strong>下载最新版本</strong></a>
+  <a href="https://github.com/yf-official/MacMouseFixPro/releases/latest"><strong>Download for macOS</strong></a>
   ·
-  <a href="https://github.com/yf-official/MacMouseFixPro/issues">反馈问题</a>
+  <a href="#简体中文">简体中文</a>
+  ·
+  <a href="https://github.com/yf-official/MacMouseFixPro/issues">Report an issue</a>
 </p>
 
-## 项目简介
+<p align="center">
+  <img src="docs/images/settings-en.png" alt="Mac Mouse Fix Pro settings in English" width="820">
+</p>
 
-macOS 对许多非 Apple 鼠标只提供基础支持：机械滚轮滚动生硬、侧键行为不统一，部分鼠标的按键编号也与常见定义不同。Mac Mouse Fix Pro 通过原生 Core Graphics 事件处理改善这些问题，同时保持触控板输入不受影响。
+## Why Mac Mouse Fix Pro?
 
-项目采用 Swift 编写，提供中文设置界面、菜单栏后台代理和 Dock 菜单。设置窗口关闭后优化仍会继续运行；从菜单栏退出时，代理会停止并恢复系统默认输入。
+Many third-party mice only receive basic support on macOS. Mechanical wheel input can feel abrupt, side-button numbering varies between devices, and useful trackpad gestures are unavailable. Mac Mouse Fix Pro improves those interactions while leaving native trackpad scrolling untouched.
 
-> Mac Mouse Fix Pro 是独立的第三方开源项目，不是 Apple 官方产品，也不隶属于原版 Mac Mouse Fix。
+## Features
 
-## 核心功能
-
-| 功能 | 说明 |
+| Feature | What it does |
 | --- | --- |
-| 触控板式丝滑滚动 | 将机械滚轮输入转换为连续像素滚动，并提供短暂动量衰减 |
-| 侧键重映射 | 配置中键、辅助按键 1 和辅助按键 2，支持多种系统与应用操作 |
-| 侧键编号校准 | 兼容侧键上报为 3/4、4/5 或其他编号的第三方鼠标 |
-| 按住侧键 + 滚轮 | 分别配置滚轮向上和向下动作，触发组合后自动抑制侧键单击 |
-| 原生捏合缩放 | 发送完整 magnification 手势，模拟触控板双指捏合，而不是键盘缩放快捷键 |
-| 指针手感调整 | 可选的移动速度、低通平滑和快速移动响应保护 |
-| 原生设置界面 | 设置窗口、菜单栏、Dock 菜单和运行提示均支持本地化 |
-| 中英文切换 | 在设置页即时切换简体中文或 English，并在下次启动时保持选择 |
-| 安全退出 | App、事件监听和后台代理绑定生命周期，退出后不会遗留输入拦截 |
+| Trackpad-like smooth scrolling | Converts wheel notches into continuous pixel scrolling with adjustable momentum |
+| Side-button remapping | Assigns system and app actions to the wheel click and two auxiliary buttons |
+| Button calibration | Supports mice that report their side buttons as 3/4, 4/5, or other identifiers |
+| Hold side button + wheel | Maps wheel-up and wheel-down gestures independently for each auxiliary button |
+| Native pinch zoom | Sends a complete macOS magnification gesture instead of a keyboard zoom shortcut |
+| Pointer tuning | Adjusts pointer speed and optional low-pass smoothing for mechanical mice |
+| English and Chinese UI | Switches the settings window, menu bar, Dock menu, actions, and status messages instantly |
+| Background operation | Keeps your settings active after the window is closed and stops cleanly when you quit |
 
-## 默认操作
+## Default Controls
 
-- 中键：调度中心
-- 辅助按键 1：后退
-- 辅助按键 2：前进
-- 按住辅助按键 1 并滚动：增大 / 减小音量
-- 按住辅助按键 2 并滚动：触控板捏合放大 / 缩小
+| Input | Default action |
+| --- | --- |
+| Wheel click | Mission Control |
+| Auxiliary Button 1 | Back |
+| Auxiliary Button 2 | Forward |
+| Hold Auxiliary Button 1 + wheel | Volume up / down |
+| Hold Auxiliary Button 2 + wheel | Trackpad-style pinch zoom in / out |
 
-还可配置显示桌面、启动台、切换空间、切换 App、标签页操作、复制粘贴、撤销重做、截图、锁屏和媒体音量等动作。
+Actions also include Show Desktop, Launchpad, Space switching, app switching, tab controls, clipboard actions, undo/redo, screenshots, screen locking, and media volume.
 
-## 安装使用
+## Install
 
-1. 从 [Releases](https://github.com/yf-official/MacMouseFixPro/releases/latest) 下载 `MacMouseFixPro.zip`。
-2. 解压并打开 `MacMouseFixPro.app`。
-3. 按提示前往 `系统设置 > 隐私与安全性 > 辅助功能` 完成授权。
-4. 返回 App，根据鼠标实际情况配置侧键和滚轮手感。
-5. 在“界面语言”中选择“简体中文”或“English”。
-6. 设置完成后可以关闭窗口，菜单栏中的 `MMF` 会继续运行。
-7. 如需完全停止优化，从菜单栏选择“退出并停止优化”。
+1. Download `MacMouseFixPro.zip` from the [latest release](https://github.com/yf-official/MacMouseFixPro/releases/latest).
+2. Extract the archive and move `MacMouseFixPro.app` to Applications.
+3. Open the app and grant Accessibility access when macOS asks for it.
+4. Choose English or Simplified Chinese under **Status > Interface Language**.
+5. Configure your buttons, scrolling, and pointer response.
 
-> 未经 Apple 公证的本地构建首次打开时，可能需要在 Finder 中右键 App 并选择“打开”。
+Closing the settings window keeps optimization running. Use **Quit and Stop Optimization** from the menu bar when you want to stop it completely.
 
-> 请不要从 GitHub 的“Code > Download ZIP”源码包中寻找或运行 App。源码仓库不包含发布构建；可直接运行的版本只通过 Releases 提供，以确保 App bundle、可执行权限和签名保持完整。
+> Current release builds are not notarized with an Apple Developer ID. On first launch, you may need to Control-click the app in Finder and choose **Open**. Download runnable builds from Releases, not from the source-code archive.
 
-## 侧键校准
+## Side-Button Calibration
 
-1. 在设置页按一下鼠标侧键。
-2. 查看“最近检测”显示的底层按键编号。
-3. 为“辅助按键 1”或“辅助按键 2”选择对应编号。
-4. 选择单击动作，以及按住侧键滚动时的向上、向下动作。
+1. Press a side button while the settings window is open.
+2. Read the identifier shown under **Last detected**.
+3. Assign that identifier to Auxiliary Button 1 or Auxiliary Button 2.
+4. Choose the click action and the wheel-up / wheel-down actions.
 
-两个辅助按键不能使用相同编号。选择已占用的编号时，App 会自动交换映射。
+The two auxiliary buttons cannot share one identifier. Selecting an identifier already in use swaps the mappings automatically.
 
-## 工作方式
+## Privacy
 
-- 主程序负责设置界面、权限检查和代理生命周期。
-- 后台代理使用 Core Graphics event tap 监听鼠标输入。
-- 机械滚轮事件由丝滑滚动控制器转换；触控板连续事件保持系统原样。
-- 侧键组合由独立状态机管理，确保按下、组合触发和松开顺序完整。
-- 捏合缩放包含 `Began → Changed → Ended` 生命周期，防止手势状态残留。
+Mac Mouse Fix Pro runs locally. It does not require an account, collect telemetry, or send mouse input over the network. Accessibility permission is required because macOS only allows trusted apps to monitor and transform global mouse events.
 
-## 从源码构建
+<details>
+<summary><strong>Build from source</strong></summary>
 
-需要 macOS 13 或更高版本，以及 Xcode Command Line Tools。
+Requires macOS 13 or later and Xcode Command Line Tools.
 
 ```sh
 git clone https://github.com/yf-official/MacMouseFixPro.git
@@ -95,20 +94,56 @@ swift test
 scripts/build_app.sh
 ```
 
-构建结果位于：
+Build output is written to `dist/MacMouseFixPro.app` and `dist/MacMouseFixPro.zip`.
 
-```text
-dist/MacMouseFixPro.app
-dist/MacMouseFixPro.zip
-```
+</details>
 
-## 当前限制
+## Acknowledgements
 
-- 尚未使用 Apple Developer ID 签名和公证。
-- 暂不支持登录时自动启动、按 App 独立配置或按鼠标设备保存配置。
-- 指针平滑属于软件级事件修正，不是硬件级重采样；不需要时建议关闭。
-- 捏合缩放只对原本支持触控板捏合的应用生效。
+The product direction and parts of the interaction design were inspired by [Mac Mouse Fix](https://github.com/noah-nuebling/mac-mouse-fix). Mac Mouse Fix Pro is an independent open-source project and is not affiliated with Apple or the original Mac Mouse Fix project.
 
-## 致谢
+<details id="简体中文">
+<summary><strong>简体中文介绍</strong></summary>
 
-本项目的鼠标增强方向和部分交互设计参考了 [Mac Mouse Fix](https://github.com/noah-nuebling/mac-mouse-fix)。实现代码由本项目独立维护。
+## 项目简介
+
+Mac Mouse Fix Pro 是一款面向第三方鼠标的原生 macOS 优化工具，让机械滚轮获得连续、带惯性的滚动效果，并提供可靠的侧键映射和接近触控板的组合手势。原生触控板滚动保持系统行为，不会被软件接管。
+
+## 主要功能
+
+| 功能 | 说明 |
+| --- | --- |
+| 触控板式丝滑滚动 | 将机械滚轮输入转换为连续像素滚动，并提供可调节的短暂惯性 |
+| 侧键重映射 | 配置中键、辅助按键 1 和辅助按键 2 的系统或应用操作 |
+| 侧键编号校准 | 兼容侧键上报为 3/4、4/5 或其他编号的第三方鼠标 |
+| 按住侧键 + 滚轮 | 为两个辅助按键分别设置滚轮向上和向下动作 |
+| 原生捏合缩放 | 发送完整的 macOS magnification 手势，模拟触控板双指捏合 |
+| 指针手感调整 | 调整指针速度，并可启用低通平滑以减轻机械鼠标的细小抖动 |
+| 中英文界面 | 设置窗口、菜单栏、Dock 菜单、动作名称和状态提示均可即时切换 |
+| 后台运行 | 关闭窗口后继续应用设置，完全退出时会停止输入优化 |
+
+## 默认操作
+
+| 输入 | 默认动作 |
+| --- | --- |
+| 滚轮按下 | 调度中心 |
+| 辅助按键 1 | 后退 |
+| 辅助按键 2 | 前进 |
+| 按住辅助按键 1 + 滚轮 | 增大 / 减小音量 |
+| 按住辅助按键 2 + 滚轮 | 触控板式捏合放大 / 缩小 |
+
+## 安装
+
+1. 从 [最新版本](https://github.com/yf-official/MacMouseFixPro/releases/latest) 下载 `MacMouseFixPro.zip`。
+2. 解压后将 `MacMouseFixPro.app` 移动到“应用程序”文件夹。
+3. 打开 App，并根据 macOS 提示授予辅助功能权限。
+4. 在“运行状态 > 界面语言”中选择简体中文或 English。
+5. 根据鼠标实际情况配置侧键、滚轮和指针手感。
+
+关闭设置窗口后优化会继续运行。如需完全停止，请从菜单栏选择“退出并停止优化”。当前版本尚未经过 Apple Developer ID 公证，首次打开时可能需要在 Finder 中按住 Control 点按 App，然后选择“打开”。
+
+## 隐私
+
+Mac Mouse Fix Pro 完全在本机运行，不要求登录、不收集遥测信息，也不会通过网络发送鼠标输入。辅助功能权限仅用于监听和转换全局鼠标事件。
+
+</details>
