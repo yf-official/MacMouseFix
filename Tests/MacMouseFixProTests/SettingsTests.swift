@@ -63,6 +63,7 @@ final class SettingsTests: XCTestCase {
         XCTAssertFalse(decoded.pointerSmoothing)
         XCTAssertEqual(decoded.scrollGestureAction(forButton: 3, direction: .up), .volumeUp)
         XCTAssertEqual(decoded.scrollGestureAction(forButton: 4, direction: .down), .zoomOut)
+        XCTAssertEqual(decoded.language, .simplifiedChinese)
     }
 
     func testVersionThreePreservesPointerSmoothing() throws {
@@ -148,5 +149,26 @@ final class SettingsTests: XCTestCase {
         XCTAssertEqual(samples.map(\.phase), [.began, .changed, .changed, .ended])
         XCTAssertLessThan(samples[2].magnification, 0)
         XCTAssertNil(simulator.activeButton)
+    }
+
+    func testLanguageSelectionSurvivesEncoding() throws {
+        var settings = MouseSettings()
+        settings.language = .english
+
+        let data = try JSONEncoder().encode(settings)
+        let decoded = try JSONDecoder().decode(MouseSettings.self, from: data)
+
+        XCTAssertEqual(decoded.language, .english)
+        XCTAssertEqual(decoded.settingsVersion, MouseSettings.currentVersion)
+    }
+
+    func testEnglishActionAndButtonNames() {
+        XCTAssertEqual(MouseAction.zoomIn.menuTitle(for: .english), "Pinch to Zoom In")
+        XCTAssertEqual(MouseAction.volumeDown.menuTitle(for: .english), "Volume Down")
+        XCTAssertEqual(
+            MouseSettings.displayName(forCGButton: 4, language: .english),
+            "Auxiliary Button 2"
+        )
+        XCTAssertEqual(ScrollGestureDirection.up.menuTitle(for: .english), "Wheel Up")
     }
 }

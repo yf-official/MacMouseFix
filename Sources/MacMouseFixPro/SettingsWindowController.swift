@@ -5,10 +5,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     private let statusLabel = NSTextField(labelWithString: "")
     private let permissionLabel = NSTextField(labelWithString: "")
-    private let enabledCheckbox = NSButton(checkboxWithTitle: "启用鼠标优化", target: nil, action: nil)
-    private let naturalCheckbox = NSButton(checkboxWithTitle: "自然滚动方向", target: nil, action: nil)
-    private let smoothCheckbox = NSButton(checkboxWithTitle: "启用触控板式丝滑滚动（推荐）", target: nil, action: nil)
-    private let pointerCheckbox = NSButton(checkboxWithTitle: "启用鼠标指针平滑", target: nil, action: nil)
+    private let enabledCheckbox = NSButton(checkboxWithTitle: "", target: nil, action: nil)
+    private let naturalCheckbox = NSButton(checkboxWithTitle: "", target: nil, action: nil)
+    private let smoothCheckbox = NSButton(checkboxWithTitle: "", target: nil, action: nil)
+    private let pointerCheckbox = NSButton(checkboxWithTitle: "", target: nil, action: nil)
+    private let languagePopup = NSPopUpButton()
     private let speedSlider = NSSlider(value: 1.15, minValue: 0.2, maxValue: 4.0, target: nil, action: nil)
     private let smoothnessSlider = NSSlider(value: 0.88, minValue: 0.0, maxValue: 1.0, target: nil, action: nil)
     private let pointerSpeedSlider = NSSlider(value: 1.0, minValue: 0.5, maxValue: 2.0, target: nil, action: nil)
@@ -17,11 +18,17 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private let smoothnessValueLabel = NSTextField(labelWithString: "88%")
     private let pointerSpeedValueLabel = NSTextField(labelWithString: "1.0x")
     private let pointerSmoothnessValueLabel = NSTextField(labelWithString: "28%")
-    private let buttonDiagnosticLabel = NSTextField(labelWithString: "最近检测：请按一下鼠标侧键。")
+    private let buttonDiagnosticLabel = NSTextField(labelWithString: "")
     private var actionPopups: [Int: NSPopUpButton] = [:]
     private var physicalIDPopups: [Int: NSPopUpButton] = [:]
     private var gestureActionPopups: [String: NSPopUpButton] = [:]
     private var diagnosticTimer: Timer?
+
+    private var language: AppLanguage { store.settings.language }
+
+    private func text(_ chinese: String, _ english: String) -> String {
+        language.text(chinese, english)
+    }
 
     convenience init() {
         let window = NSWindow(
@@ -61,6 +68,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private func buildUI() {
         guard let contentView = window?.contentView else { return }
 
+        enabledCheckbox.title = text("启用鼠标优化", "Enable Mouse Optimization")
+        naturalCheckbox.title = text("自然滚动方向", "Natural Scrolling Direction")
+        smoothCheckbox.title = text("启用触控板式丝滑滚动（推荐）", "Enable Trackpad-like Smooth Scrolling (Recommended)")
+        pointerCheckbox.title = text("启用鼠标指针平滑", "Enable Pointer Smoothing")
+
         let scrollView = NSScrollView()
         scrollView.hasVerticalScroller = true
         scrollView.autohidesScrollers = false
@@ -98,7 +110,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
         let title = NSTextField(labelWithString: "Mac Mouse Fix Pro")
         title.font = .systemFont(ofSize: 23, weight: .bold)
-        let subtitle = NSTextField(labelWithString: "鼠标优化 · 配置侧键点击、按住侧键滚动、丝滑滚轮和指针手感。触控板连续滚动保持系统原样。")
+        let subtitle = NSTextField(labelWithString: text(
+            "鼠标优化 · 配置侧键点击、按住侧键滚动、丝滑滚轮和指针手感。触控板连续滚动保持系统原样。",
+            "Configure buttons, button-wheel gestures, smooth scrolling, and pointer response. Trackpad scrolling remains unchanged."
+        ))
         subtitle.textColor = .secondaryLabelColor
         subtitle.maximumNumberOfLines = 2
 
@@ -125,7 +140,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         root.addArrangedSubview(scrollBox())
         root.addArrangedSubview(pointerBox())
 
-        let note = NSTextField(labelWithString: "提示：左键和右键固定保持系统默认。选择菜单栏里的“退出并停止优化”会停止后台代理并恢复系统默认输入。")
+        let note = NSTextField(labelWithString: text(
+            "提示：左键和右键固定保持系统默认。选择菜单栏里的“退出并停止优化”会停止后台代理并恢复系统默认输入。",
+            "The left and right buttons always keep their system behavior. Choose Quit and Stop Optimization from the menu bar to restore default input."
+        ))
         note.textColor = .secondaryLabelColor
         note.maximumNumberOfLines = 2
         root.addArrangedSubview(note)
@@ -133,7 +151,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     private func statusBox() -> NSView {
         let box = NSBox()
-        box.title = "运行状态"
+        box.title = text("运行状态", "Status")
         box.boxType = .primary
 
         let stack = NSStackView()
@@ -151,13 +169,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
         let buttons = NSStackView()
         buttons.spacing = 10
-        let requestButton = NSButton(title: "申请辅助功能权限", target: self, action: #selector(requestPermission))
-        let openButton = NSButton(title: "打开隐私设置", target: self, action: #selector(openPrivacySettings))
-        let resetButton = NSButton(title: "恢复默认设置", target: self, action: #selector(resetDefaults))
+        let requestButton = NSButton(title: text("申请辅助功能权限", "Grant Access"), target: self, action: #selector(requestPermission))
+        let openButton = NSButton(title: text("打开隐私设置", "Privacy Settings"), target: self, action: #selector(openPrivacySettings))
+        let resetButton = NSButton(title: text("恢复默认设置", "Restore Defaults"), target: self, action: #selector(resetDefaults))
         buttons.addArrangedSubview(requestButton)
         buttons.addArrangedSubview(openButton)
         buttons.addArrangedSubview(resetButton)
 
+        configureLanguagePopup()
+        stack.addArrangedSubview(languageRow())
         stack.addArrangedSubview(enabledCheckbox)
         stack.addArrangedSubview(permissionLabel)
         stack.addArrangedSubview(statusLabel)
@@ -169,7 +189,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     private func buttonMappingBox() -> NSView {
         let box = NSBox()
-        box.title = "按键功能"
+        box.title = text("按键功能", "Button Actions")
         box.boxType = .primary
 
         let stack = NSStackView()
@@ -178,8 +198,14 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         stack.translatesAutoresizingMaskIntoConstraints = false
         box.contentView?.addSubview(stack)
 
-        stack.addArrangedSubview(fixedRow(label: "左键", detail: "系统默认点击，不拦截"))
-        stack.addArrangedSubview(fixedRow(label: "右键", detail: "系统默认右键菜单，不拦截"))
+        stack.addArrangedSubview(fixedRow(
+            label: text("左键", "Left Button"),
+            detail: text("系统默认点击，不拦截", "System click, never intercepted")
+        ))
+        stack.addArrangedSubview(fixedRow(
+            label: text("右键", "Right Button"),
+            detail: text("系统默认右键菜单，不拦截", "System context menu, never intercepted")
+        ))
 
         for button in MouseSettings.configurableButtons {
             let popup = NSPopUpButton()
@@ -233,7 +259,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         labels.addArrangedSubview(subtitle)
         labels.widthAnchor.constraint(equalToConstant: 190).isActive = true
 
-        let value = NSTextField(labelWithString: "保持原样")
+        let value = NSTextField(labelWithString: text("保持原样", "Pass Through"))
         value.textColor = .secondaryLabelColor
         value.alignment = .center
         value.widthAnchor.constraint(equalToConstant: 250).isActive = true
@@ -242,9 +268,32 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         return row
     }
 
+    private func languageRow() -> NSView {
+        let row = NSStackView()
+        row.spacing = 12
+        row.alignment = .centerY
+
+        let label = NSTextField(labelWithString: text("界面语言", "Interface Language"))
+        label.widthAnchor.constraint(equalToConstant: 150).isActive = true
+        languagePopup.widthAnchor.constraint(equalToConstant: 180).isActive = true
+        row.addArrangedSubview(label)
+        row.addArrangedSubview(languagePopup)
+        return row
+    }
+
+    private func configureLanguagePopup() {
+        languagePopup.removeAllItems()
+        for language in AppLanguage.allCases {
+            languagePopup.addItem(withTitle: language.displayName)
+            languagePopup.lastItem?.representedObject = language.rawValue
+        }
+        languagePopup.target = self
+        languagePopup.action = #selector(changeLanguage(_:))
+    }
+
     private func scrollBox() -> NSView {
         let box = NSBox()
-        box.title = "滚轮手感"
+        box.title = text("滚轮手感", "Scrolling")
         box.boxType = .primary
 
         let stack = NSStackView()
@@ -264,10 +313,13 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
         stack.addArrangedSubview(naturalCheckbox)
         stack.addArrangedSubview(smoothCheckbox)
-        stack.addArrangedSubview(sliderRow(label: "滚动速度", slider: speedSlider, valueLabel: speedValueLabel))
-        stack.addArrangedSubview(sliderRow(label: "丝滑与惯性强度", slider: smoothnessSlider, valueLabel: smoothnessValueLabel))
+        stack.addArrangedSubview(sliderRow(label: text("滚动速度", "Scroll Speed"), slider: speedSlider, valueLabel: speedValueLabel))
+        stack.addArrangedSubview(sliderRow(label: text("丝滑与惯性强度", "Smoothness"), slider: smoothnessSlider, valueLabel: smoothnessValueLabel))
 
-        let helper = NSTextField(labelWithString: "高丝滑强度会把机械滚轮的一格滚动拆成更细的连续像素滚动，并在停止拨轮后保留短暂动量。")
+        let helper = NSTextField(labelWithString: text(
+            "高丝滑强度会把机械滚轮的一格滚动拆成更细的连续像素滚动，并在停止拨轮后保留短暂动量。",
+            "Higher smoothness splits each wheel notch into finer pixel scrolling and keeps brief momentum after the wheel stops."
+        ))
         helper.textColor = .secondaryLabelColor
         helper.maximumNumberOfLines = 2
         stack.addArrangedSubview(helper)
@@ -278,7 +330,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     private func buttonScrollGestureBox() -> NSView {
         let box = NSBox()
-        box.title = "按住侧键 + 滚轮"
+        box.title = text("按住侧键 + 滚轮", "Hold Side Button + Wheel")
         box.boxType = .primary
 
         let stack = NSStackView()
@@ -308,7 +360,10 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
             }
         }
 
-        let note = NSTextField(labelWithString: "“捏合放大 / 缩小”会模拟触控板双指手势。组合滚动触发后，本次侧键单击不会重复执行。")
+        let note = NSTextField(labelWithString: text(
+            "“捏合放大 / 缩小”会模拟触控板双指手势。组合滚动触发后，本次侧键单击不会重复执行。",
+            "Pinch zoom actions simulate a two-finger trackpad gesture. Once a wheel gesture starts, the original side-button click is suppressed."
+        ))
         note.textColor = .secondaryLabelColor
         note.maximumNumberOfLines = 2
         stack.addArrangedSubview(note)
@@ -319,7 +374,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     private func pointerBox() -> NSView {
         let box = NSBox()
-        box.title = "指针移动"
+        box.title = text("指针移动", "Pointer Movement")
         box.boxType = .primary
 
         let stack = NSStackView()
@@ -336,10 +391,13 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         pointerSmoothnessSlider.action = #selector(changePointerSmoothness)
 
         stack.addArrangedSubview(pointerCheckbox)
-        stack.addArrangedSubview(sliderRow(label: "指针速度", slider: pointerSpeedSlider, valueLabel: pointerSpeedValueLabel))
-        stack.addArrangedSubview(sliderRow(label: "移动平滑强度", slider: pointerSmoothnessSlider, valueLabel: pointerSmoothnessValueLabel))
+        stack.addArrangedSubview(sliderRow(label: text("指针速度", "Pointer Speed"), slider: pointerSpeedSlider, valueLabel: pointerSpeedValueLabel))
+        stack.addArrangedSubview(sliderRow(label: text("移动平滑强度", "Pointer Smoothing"), slider: pointerSmoothnessSlider, valueLabel: pointerSmoothnessValueLabel))
 
-        let helper = NSTextField(labelWithString: "用于降低机械鼠标移动时的小幅抖动。强度过高会带来延迟，建议保持 20%-40%。触控板如果感觉受影响，可关闭此项。")
+        let helper = NSTextField(labelWithString: text(
+            "用于降低机械鼠标移动时的小幅抖动。强度过高会带来延迟，建议保持 20%-40%。触控板如果感觉受影响，可关闭此项。",
+            "Reduces small pointer jitter from mechanical mice. High values add latency; 20%-40% is recommended. Disable it if trackpad movement feels affected."
+        ))
         helper.textColor = .secondaryLabelColor
         helper.maximumNumberOfLines = 3
         stack.addArrangedSubview(helper)
@@ -371,7 +429,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
         row.addArrangedSubview(labels)
         if let physicalPopup {
-            physicalPopup.toolTip = "鼠标驱动上报的底层按钮编号"
+            physicalPopup.toolTip = text("鼠标驱动上报的底层按钮编号", "Low-level button number reported by the mouse driver")
             physicalPopup.widthAnchor.constraint(equalToConstant: 90).isActive = true
             row.addArrangedSubview(physicalPopup)
         }
@@ -403,12 +461,12 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         row.spacing = 12
         row.alignment = .centerY
 
-        let title = NSTextField(labelWithString: MouseSettings.displayName(forCGButton: button))
+        let title = NSTextField(labelWithString: MouseSettings.displayName(forCGButton: button, language: language))
         title.font = .systemFont(ofSize: 13, weight: .semibold)
         title.widthAnchor.constraint(equalToConstant: 140).isActive = true
 
-        let upControl = labeledPopup(title: "滚轮向上", popup: upPopup)
-        let downControl = labeledPopup(title: "滚轮向下", popup: downPopup)
+        let upControl = labeledPopup(title: text("滚轮向上", "Wheel Up"), popup: upPopup)
+        let downControl = labeledPopup(title: text("滚轮向下", "Wheel Down"), popup: downPopup)
         upControl.widthAnchor.constraint(equalToConstant: 160).isActive = true
         downControl.widthAnchor.constraint(equalToConstant: 160).isActive = true
 
@@ -433,7 +491,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private func configureActionPopup(_ popup: NSPopUpButton) {
         popup.removeAllItems()
         for action in MouseAction.allCases {
-            popup.addItem(withTitle: action.menuTitle)
+            popup.addItem(withTitle: action.menuTitle(for: language))
             popup.lastItem?.representedObject = action.rawValue
         }
     }
@@ -441,21 +499,21 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     private func configurePhysicalIDPopup(_ popup: NSPopUpButton) {
         popup.removeAllItems()
         for physicalID in 3...31 {
-            popup.addItem(withTitle: "编号 \(physicalID)")
+            popup.addItem(withTitle: text("编号 \(physicalID)", "Button \(physicalID)"))
             popup.lastItem?.representedObject = physicalID
         }
     }
 
     private func label(forButton button: Int) -> String {
-        MouseSettings.displayName(forCGButton: button)
+        MouseSettings.displayName(forCGButton: button, language: language)
     }
 
     private func detail(forButton button: Int) -> String {
         switch button {
-        case 2: return "滚轮按下，也就是中键"
-        case 3: return "第一个侧边辅助键"
-        case 4: return "第二个侧边辅助键"
-        default: return "未使用"
+        case 2: return text("滚轮按下，也就是中键", "Press the wheel (middle button)")
+        case 3: return text("第一个侧边辅助键", "First side button")
+        case 4: return text("第二个侧边辅助键", "Second side button")
+        default: return text("未使用", "Unused")
         }
     }
 
@@ -471,6 +529,7 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     func reload() {
         let settings = store.settings
+        selectLanguage(settings.language)
         enabledCheckbox.state = settings.enabled ? .on : .off
         naturalCheckbox.state = settings.naturalScrolling ? .on : .off
         smoothCheckbox.state = settings.smoothScroll ? .on : .off
@@ -506,8 +565,19 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         refreshButtonDiagnostic()
 
         permissionLabel.stringValue = PermissionManager.isAccessibilityTrusted
-            ? "辅助功能权限已授权。"
-            : "需要辅助功能权限，macOS 才允许本 App 监听和改写全局鼠标输入。"
+            ? text("辅助功能权限已授权。", "Accessibility access is granted.")
+            : text(
+                "需要辅助功能权限，macOS 才允许本 App 监听和改写全局鼠标输入。",
+                "Accessibility access is required for this app to monitor and modify global mouse input."
+            )
+    }
+
+    @objc private func changeLanguage(_ sender: NSPopUpButton) {
+        guard
+            let rawValue = sender.selectedItem?.representedObject as? String,
+            let language = AppLanguage(rawValue: rawValue)
+        else { return }
+        store.update { $0.language = language }
     }
 
     @objc private func toggleEnabled() {
@@ -524,7 +594,11 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
     }
 
     @objc private func resetDefaults() {
-        store.reset()
+        let currentLanguage = store.settings.language
+        store.update {
+            $0 = MouseSettings()
+            $0.language = currentLanguage
+        }
         reload()
     }
 
@@ -614,6 +688,15 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
         }
     }
 
+    private func selectLanguage(_ language: AppLanguage) {
+        for index in 0..<languagePopup.numberOfItems {
+            if languagePopup.item(at: index)?.representedObject as? String == language.rawValue {
+                languagePopup.selectItem(at: index)
+                return
+            }
+        }
+    }
+
     private func gestureKey(button: Int, direction: ScrollGestureDirection) -> String {
         "\(button)-\(direction.rawValue)"
     }
@@ -641,14 +724,25 @@ final class SettingsWindowController: NSWindowController, NSWindowDelegate {
 
     private func refreshButtonDiagnostic() {
         guard let diagnostic = RuntimeStatusStore.latestButton() else {
-            buttonDiagnosticLabel.stringValue = "最近检测：请按一下鼠标侧键，再根据显示的编号完成校准。"
+            buttonDiagnosticLabel.stringValue = text(
+                "最近检测：请按一下鼠标侧键，再根据显示的编号完成校准。",
+                "Last detected: press a side button, then use the reported number to calibrate it."
+            )
             return
         }
 
         if let logicalButton = diagnostic.logicalButton, let action = diagnostic.action {
-            buttonDiagnosticLabel.stringValue = "最近检测：底层编号 \(diagnostic.physicalButton) → \(MouseSettings.displayName(forCGButton: logicalButton)) → \(action.menuTitle)"
+            let buttonName = MouseSettings.displayName(forCGButton: logicalButton, language: language)
+            let actionName = action.menuTitle(for: language)
+            buttonDiagnosticLabel.stringValue = text(
+                "最近检测：底层编号 \(diagnostic.physicalButton) → \(buttonName) → \(actionName)",
+                "Last detected: button \(diagnostic.physicalButton) → \(buttonName) → \(actionName)"
+            )
         } else {
-            buttonDiagnosticLabel.stringValue = "最近检测：底层编号 \(diagnostic.physicalButton) 尚未绑定，请把辅助按键 1 或 2 的编号改为 \(diagnostic.physicalButton)。"
+            buttonDiagnosticLabel.stringValue = text(
+                "最近检测：底层编号 \(diagnostic.physicalButton) 尚未绑定，请把辅助按键 1 或 2 的编号改为 \(diagnostic.physicalButton)。",
+                "Last detected: button \(diagnostic.physicalButton) is unassigned. Set Auxiliary Button 1 or 2 to button \(diagnostic.physicalButton)."
+            )
         }
     }
 }

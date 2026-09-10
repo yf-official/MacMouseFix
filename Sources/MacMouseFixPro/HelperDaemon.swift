@@ -31,7 +31,10 @@ enum HelperDaemon {
         }
 
         guard PermissionManager.isAccessibilityTrusted else {
-            FileLogger.write("后台代理缺少辅助功能权限，无法启动鼠标引擎。")
+            FileLogger.write(store.settings.language.text(
+                "后台代理缺少辅助功能权限，无法启动鼠标引擎。",
+                "The background agent cannot start the mouse engine without Accessibility access."
+            ))
             exit(1)
         }
 

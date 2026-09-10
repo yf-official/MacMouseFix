@@ -9,6 +9,13 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     private var settingsWindowController: SettingsWindowController?
     private var statusItem: NSStatusItem?
     private var permissionTimer: Timer?
+    private var activeLanguage = AppLanguage.simplifiedChinese
+
+    private var language: AppLanguage { store.settings.language }
+
+    private func text(_ chinese: String, _ english: String) -> String {
+        language.text(chinese, english)
+    }
 
     static func main() {
         if CommandLine.arguments.contains("--helper") {
@@ -46,7 +53,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     func applicationDockMenu(_ sender: NSApplication) -> NSMenu? {
         let menu = NSMenu()
         let openItem = NSMenuItem(
-            title: "打开设置窗口",
+            title: text("打开设置窗口", "Open Settings Window"),
             action: #selector(showSettings),
             keyEquivalent: ""
         )
@@ -60,11 +67,28 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
     }
 
     private func setupObservers() {
+        activeLanguage = language
         store.onChange = { [weak self] settings in
-            self?.agent.ensureRunning()
-            self?.settingsWindowController?.reload()
-            self?.settingsWindowController?.setStatus("设置已保存，后台代理会自动应用。")
-            self?.rebuildStatusMenu()
+            guard let self else { return }
+            self.agent.ensureRunning()
+
+            if settings.language != self.activeLanguage {
+                self.activeLanguage = settings.language
+                let wasVisible = self.settingsWindowController?.window?.isVisible == true
+                self.settingsWindowController?.close()
+                self.settingsWindowController = nil
+                if wasVisible {
+                    self.showSettings()
+                }
+            } else {
+                self.settingsWindowController?.reload()
+            }
+
+            self.settingsWindowController?.setStatus(self.text(
+                "设置已保存，后台代理会自动应用。",
+                "Settings saved. The background agent will apply them automatically."
+            ))
+            self.rebuildStatusMenu()
         }
     }
 
@@ -79,12 +103,18 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             permissionTimer?.invalidate()
             permissionTimer = nil
             agent.ensureRunning()
-            settingsWindowController?.setStatus("后台代理已启动。关闭窗口会继续生效；选择“退出并停止优化”会完全停止。")
+            settingsWindowController?.setStatus(text(
+                "后台代理已启动。关闭窗口会继续生效；选择“退出并停止优化”会完全停止。",
+                "The background agent is running. Closing this window keeps optimization active; Quit and Stop Optimization stops it completely."
+            ))
             settingsWindowController?.reload()
             return
         }
 
-        settingsWindowController?.setStatus("正在等待辅助功能权限。")
+        settingsWindowController?.setStatus(text(
+            "正在等待辅助功能权限。",
+            "Waiting for Accessibility access."
+        ))
         if promptIfNeeded {
             PermissionManager.requestAccessibility()
         }
@@ -100,21 +130,26 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
 
     private func rebuildStatusMenu() {
         let menu = NSMenu()
-        menu.addItem(withTitle: "显示设置", action: #selector(showSettings), keyEquivalent: ",").target = self
+        menu.addItem(withTitle: text("显示设置", "Show Settings"), action: #selector(showSettings), keyEquivalent: ",").target = self
         menu.addItem(NSMenuItem.separator())
 
-        let enabledTitle = store.settings.enabled ? "暂停鼠标优化" : "启用鼠标优化"
+        let enabledTitle = store.settings.enabled
+            ? text("暂停鼠标优化", "Pause Mouse Optimization")
+            : text("启用鼠标优化", "Enable Mouse Optimization")
         menu.addItem(withTitle: enabledTitle, action: #selector(toggleEnabledFromMenu), keyEquivalent: "").target = self
-        menu.addItem(withTitle: "申请辅助功能权限", action: #selector(requestPermissionFromMenu), keyEquivalent: "").target = self
+        menu.addItem(withTitle: text("申请辅助功能权限", "Request Accessibility Access"), action: #selector(requestPermissionFromMenu), keyEquivalent: "").target = self
         menu.addItem(NSMenuItem.separator())
 
         for button in MouseSettings.configurableButtons {
             let action = store.settings.action(forButton: button)
             let physicalSuffix = button > 2
-                ? "（编号 \(store.settings.physicalButton(forLogicalButton: button) ?? button)）"
+                ? text(
+                    "（编号 \(store.settings.physicalButton(forLogicalButton: button) ?? button)）",
+                    " (Button \(store.settings.physicalButton(forLogicalButton: button) ?? button))"
+                )
                 : ""
             let item = NSMenuItem(
-                title: "\(MouseSettings.displayName(forCGButton: button))\(physicalSuffix)：\(action.menuTitle)",
+                title: "\(MouseSettings.displayName(forCGButton: button, language: language))\(physicalSuffix): \(action.menuTitle(for: language))",
                 action: nil,
                 keyEquivalent: ""
             )
@@ -125,7 +160,10 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
             let upAction = store.settings.scrollGestureAction(forButton: button, direction: .up)
             let downAction = store.settings.scrollGestureAction(forButton: button, direction: .down)
             let item = NSMenuItem(
-                title: "\(MouseSettings.displayName(forCGButton: button)) + 滚轮：↑ \(upAction.menuTitle) / ↓ \(downAction.menuTitle)",
+                title: text(
+                    "\(MouseSettings.displayName(forCGButton: button, language: language)) + 滚轮：↑ \(upAction.menuTitle(for: language)) / ↓ \(downAction.menuTitle(for: language))",
+                    "\(MouseSettings.displayName(forCGButton: button, language: language)) + Wheel: ↑ \(upAction.menuTitle(for: language)) / ↓ \(downAction.menuTitle(for: language))"
+                ),
                 action: nil,
                 keyEquivalent: ""
             )
@@ -134,7 +172,7 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         }
         let scroll = NSMenuItem(
             title: String(
-                format: "滚动：%.1fx / 丝滑 %.0f%%",
+                format: text("滚动：%.1fx / 丝滑 %.0f%%", "Scrolling: %.1fx / Smoothness %.0f%%"),
                 store.settings.scrollSpeed,
                 store.settings.smoothness * 100
             ),
@@ -144,8 +182,8 @@ final class AppDelegate: NSObject, NSApplicationDelegate {
         scroll.isEnabled = false
         menu.addItem(scroll)
         menu.addItem(NSMenuItem.separator())
-        menu.addItem(withTitle: "隐藏设置窗口（后台继续）", action: #selector(hideSettings), keyEquivalent: "w").target = self
-        menu.addItem(withTitle: "退出并停止优化", action: #selector(quitAndStop), keyEquivalent: "q").target = self
+        menu.addItem(withTitle: text("隐藏设置窗口（后台继续）", "Hide Settings (Keep Running)"), action: #selector(hideSettings), keyEquivalent: "w").target = self
+        menu.addItem(withTitle: text("退出并停止优化", "Quit and Stop Optimization"), action: #selector(quitAndStop), keyEquivalent: "q").target = self
         statusItem?.menu = menu
     }
 

@@ -11,8 +11,8 @@
 <p align="center">
   <img alt="Platform" src="https://img.shields.io/badge/macOS-13.0%2B-111111?logo=apple">
   <img alt="Swift" src="https://img.shields.io/badge/Swift-5.9-F05138?logo=swift&logoColor=white">
-  <img alt="Version" src="https://img.shields.io/badge/version-0.3.1-0969da">
-  <img alt="Interface" src="https://img.shields.io/badge/interface-简体中文-2da44e">
+  <img alt="Version" src="https://img.shields.io/badge/version-0.4.0-0969da">
+  <img alt="Interface" src="https://img.shields.io/badge/interface-中文%20%7C%20English-2da44e">
 </p>
 
 <p align="center">
@@ -39,7 +39,8 @@ macOS 对许多非 Apple 鼠标只提供基础支持：机械滚轮滚动生硬�
 | 按住侧键 + 滚轮 | 分别配置滚轮向上和向下动作，触发组合后自动抑制侧键单击 |
 | 原生捏合缩放 | 发送完整 magnification 手势，模拟触控板双指捏合，而不是键盘缩放快捷键 |
 | 指针手感调整 | 可选的移动速度、低通平滑和快速移动响应保护 |
-| 中文原生界面 | 设置窗口、菜单栏状态和运行提示均为中文 |
+| 原生设置界面 | 设置窗口、菜单栏、Dock 菜单和运行提示均支持本地化 |
+| 中英文切换 | 在设置页即时切换简体中文或 English，并在下次启动时保持选择 |
 | 安全退出 | App、事件监听和后台代理绑定生命周期，退出后不会遗留输入拦截 |
 
 ## 默认操作
@@ -58,8 +59,9 @@ macOS 对许多非 Apple 鼠标只提供基础支持：机械滚轮滚动生硬�
 2. 解压并打开 `MacMouseFixPro.app`。
 3. 按提示前往 `系统设置 > 隐私与安全性 > 辅助功能` 完成授权。
 4. 返回 App，根据鼠标实际情况配置侧键和滚轮手感。
-5. 设置完成后可以关闭窗口，菜单栏中的 `MMF` 会继续运行。
-6. 如需完全停止优化，从菜单栏选择“退出并停止优化”。
+5. 在“界面语言”中选择“简体中文”或“English”。
+6. 设置完成后可以关闭窗口，菜单栏中的 `MMF` 会继续运行。
+7. 如需完全停止优化，从菜单栏选择“退出并停止优化”。
 
 > 未经 Apple 公证的本地构建首次打开时，可能需要在 Finder 中右键 App 并选择“打开”。
 

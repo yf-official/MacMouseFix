@@ -1,5 +1,21 @@
 import Foundation
 
+enum AppLanguage: String, CaseIterable, Codable {
+    case simplifiedChinese = "zh-Hans"
+    case english = "en"
+
+    var displayName: String {
+        switch self {
+        case .simplifiedChinese: return "简体中文"
+        case .english: return "English"
+        }
+    }
+
+    func text(_ chinese: String, _ english: String) -> String {
+        self == .simplifiedChinese ? chinese : english
+    }
+}
+
 enum MouseAction: String, CaseIterable, Codable {
     case passThrough = "Pass Through"
     case back = "Back"
@@ -35,41 +51,41 @@ enum MouseAction: String, CaseIterable, Codable {
     case nextApp = "Next App"
     case disabled = "Disabled"
 
-    var menuTitle: String {
+    func menuTitle(for language: AppLanguage) -> String {
         switch self {
-        case .passThrough: return "保持原样"
-        case .back: return "后退"
-        case .forward: return "前进"
-        case .missionControl: return "调度中心"
+        case .passThrough: return language.text("保持原样", "Pass Through")
+        case .back: return language.text("后退", "Back")
+        case .forward: return language.text("前进", "Forward")
+        case .missionControl: return "Mission Control"
         case .appExpose: return "App Expose"
-        case .showDesktop: return "显示桌面"
-        case .launchpad: return "启动台"
-        case .spaceLeft: return "切换到左侧桌面"
-        case .spaceRight: return "切换到右侧桌面"
-        case .previousTab: return "上一个标签页"
-        case .nextTab: return "下一个标签页"
-        case .newTab: return "新建标签页"
-        case .closeTab: return "关闭标签页"
-        case .refresh: return "刷新"
-        case .copy: return "复制"
-        case .paste: return "粘贴"
-        case .undo: return "撤销"
-        case .redo: return "重做"
-        case .zoomIn: return "捏合放大"
-        case .zoomOut: return "捏合缩小"
-        case .pageUp: return "上一页"
-        case .pageDown: return "下一页"
+        case .showDesktop: return language.text("显示桌面", "Show Desktop")
+        case .launchpad: return "Launchpad"
+        case .spaceLeft: return language.text("切换到左侧桌面", "Move One Space Left")
+        case .spaceRight: return language.text("切换到右侧桌面", "Move One Space Right")
+        case .previousTab: return language.text("上一个标签页", "Previous Tab")
+        case .nextTab: return language.text("下一个标签页", "Next Tab")
+        case .newTab: return language.text("新建标签页", "New Tab")
+        case .closeTab: return language.text("关闭标签页", "Close Tab")
+        case .refresh: return language.text("刷新", "Refresh")
+        case .copy: return language.text("复制", "Copy")
+        case .paste: return language.text("粘贴", "Paste")
+        case .undo: return language.text("撤销", "Undo")
+        case .redo: return language.text("重做", "Redo")
+        case .zoomIn: return language.text("捏合放大", "Pinch to Zoom In")
+        case .zoomOut: return language.text("捏合缩小", "Pinch to Zoom Out")
+        case .pageUp: return language.text("上一页", "Page Up")
+        case .pageDown: return language.text("下一页", "Page Down")
         case .escape: return "Esc"
-        case .returnKey: return "回车"
-        case .screenshotArea: return "区域截图"
-        case .lockScreen: return "锁定屏幕"
-        case .middleClick: return "中键点击"
-        case .volumeUp: return "增大音量"
-        case .volumeDown: return "减小音量"
-        case .mute: return "静音 / 取消静音"
-        case .previousApp: return "上一个 App"
-        case .nextApp: return "下一个 App"
-        case .disabled: return "禁用"
+        case .returnKey: return language.text("回车", "Return")
+        case .screenshotArea: return language.text("区域截图", "Capture Selection")
+        case .lockScreen: return language.text("锁定屏幕", "Lock Screen")
+        case .middleClick: return language.text("中键点击", "Middle Click")
+        case .volumeUp: return language.text("增大音量", "Volume Up")
+        case .volumeDown: return language.text("减小音量", "Volume Down")
+        case .mute: return language.text("静音 / 取消静音", "Mute / Unmute")
+        case .previousApp: return language.text("上一个 App", "Previous App")
+        case .nextApp: return language.text("下一个 App", "Next App")
+        case .disabled: return language.text("禁用", "Disabled")
         }
     }
 }
@@ -78,10 +94,10 @@ enum ScrollGestureDirection: String, CaseIterable, Codable {
     case up
     case down
 
-    var menuTitle: String {
+    func menuTitle(for language: AppLanguage) -> String {
         switch self {
-        case .up: return "滚轮向上"
-        case .down: return "滚轮向下"
+        case .up: return language.text("滚轮向上", "Wheel Up")
+        case .down: return language.text("滚轮向下", "Wheel Down")
         }
     }
 }
@@ -103,9 +119,10 @@ struct ButtonScrollGesture: Codable, Equatable {
 }
 
 struct MouseSettings: Codable, Equatable {
-    static let currentVersion = 4
+    static let currentVersion = 5
 
     var settingsVersion = MouseSettings.currentVersion
+    var language = AppLanguage.simplifiedChinese
     var enabled = true
     var buttonActions: [Int: MouseAction] = MouseSettings.defaultButtonActions
     var naturalScrolling = false
@@ -211,18 +228,19 @@ struct MouseSettings: Codable, Equatable {
         buttonScrollGestures[button] = gesture
     }
 
-    static func displayName(forCGButton button: Int) -> String {
+    static func displayName(forCGButton button: Int, language: AppLanguage) -> String {
         switch button {
-        case 2: return "滚轮按下"
-        case 3: return "辅助按键 1"
-        case 4: return "辅助按键 2"
-        default: return "未使用按键 \(button)"
+        case 2: return language.text("滚轮按下", "Wheel Click")
+        case 3: return language.text("辅助按键 1", "Auxiliary Button 1")
+        case 4: return language.text("辅助按键 2", "Auxiliary Button 2")
+        default: return language.text("未使用按键 \(button)", "Unused Button \(button)")
         }
     }
 
     enum CodingKeys: String, CodingKey {
         case enabled
         case settingsVersion
+        case language
         case buttonActions
         case button3Action
         case button4Action
@@ -242,6 +260,7 @@ struct MouseSettings: Codable, Equatable {
     init(from decoder: Decoder) throws {
         let container = try decoder.container(keyedBy: CodingKeys.self)
         settingsVersion = try container.decodeIfPresent(Int.self, forKey: .settingsVersion) ?? 1
+        language = try container.decodeIfPresent(AppLanguage.self, forKey: .language) ?? .simplifiedChinese
         enabled = try container.decodeIfPresent(Bool.self, forKey: .enabled) ?? true
         naturalScrolling = try container.decodeIfPresent(Bool.self, forKey: .naturalScrolling) ?? false
         scrollSpeed = try container.decodeIfPresent(Double.self, forKey: .scrollSpeed) ?? 1.15
@@ -310,6 +329,7 @@ struct MouseSettings: Codable, Equatable {
     func encode(to encoder: Encoder) throws {
         var container = encoder.container(keyedBy: CodingKeys.self)
         try container.encode(MouseSettings.currentVersion, forKey: .settingsVersion)
+        try container.encode(language, forKey: .language)
         try container.encode(enabled, forKey: .enabled)
         try container.encode(buttonActions, forKey: .buttonActions)
         try container.encode(naturalScrolling, forKey: .naturalScrolling)

@@ -58,7 +58,11 @@ final class MouseEngine {
             callback: callback,
             userInfo: Unmanaged.passUnretained(self).toOpaque()
         ) else {
-            onStatusChange?("鼠标引擎启动失败。请授予辅助功能权限后重试。")
+            let language = currentSettings().language
+            onStatusChange?(language.text(
+                "鼠标引擎启动失败。请授予辅助功能权限后重试。",
+                "The mouse engine could not start. Grant Accessibility access and try again."
+            ))
             return
         }
 
@@ -69,7 +73,10 @@ final class MouseEngine {
             CFRunLoopAddSource(CFRunLoopGetMain(), runLoopSource, .commonModes)
         }
         setTapEnabled(enabled)
-        onStatusChange?("鼠标引擎正在运行。")
+        onStatusChange?(currentSettings().language.text(
+            "鼠标引擎正在运行。",
+            "The mouse engine is running."
+        ))
     }
 
     func stop() {
@@ -85,7 +92,10 @@ final class MouseEngine {
         resetButtonState()
         smoothScroller.reset()
         pointerSmoother.reset()
-        onStatusChange?("鼠标引擎已停止。")
+        onStatusChange?(currentSettings().language.text(
+            "鼠标引擎已停止。",
+            "The mouse engine has stopped."
+        ))
     }
 
     func update(settings: MouseSettings) {
@@ -145,7 +155,10 @@ final class MouseEngine {
     private func setTapEnabled(_ enabled: Bool) {
         guard let eventTap else { return }
         CGEvent.tapEnable(tap: eventTap, enable: enabled)
-        onStatusChange?(enabled ? "鼠标优化已启用。" : "鼠标优化已暂停。")
+        let language = currentSettings().language
+        onStatusChange?(enabled
+            ? language.text("鼠标优化已启用。", "Mouse optimization is enabled.")
+            : language.text("鼠标优化已暂停。", "Mouse optimization is paused."))
     }
 
     private func currentSettings() -> MouseSettings {
@@ -192,7 +205,8 @@ final class MouseEngine {
                 return nil
             }
             if action == .passThrough {
-                announce("\(MouseSettings.displayName(forCGButton: logicalButton))：保持原样")
+                let language = activeSettings.language
+                announce("\(MouseSettings.displayName(forCGButton: logicalButton, language: language)): \(action.menuTitle(for: language))")
                 return Unmanaged.passUnretained(event)
             }
             guard pressedButtons.insert(physicalButton).inserted else { return nil }
@@ -234,8 +248,9 @@ final class MouseEngine {
                         wheelDelta: wheelDelta,
                         button: heldButton.logicalButton
                     ) {
-                        let context = "\(MouseSettings.displayName(forCGButton: heldButton.logicalButton)) + \(direction.menuTitle)"
-                        announce("\(context)：\(gestureAction.menuTitle)")
+                        let language = activeSettings.language
+                        let context = "\(MouseSettings.displayName(forCGButton: heldButton.logicalButton, language: language)) + \(direction.menuTitle(for: language))"
+                        announce("\(context): \(gestureAction.menuTitle(for: language))")
                         return nil
                     }
                     magnificationGesture.end(for: heldButton.logicalButton)
@@ -243,7 +258,8 @@ final class MouseEngine {
                         logicalButton: heldButton.logicalButton,
                         direction: direction
                     ) {
-                        let context = "\(MouseSettings.displayName(forCGButton: heldButton.logicalButton)) + \(direction.menuTitle)"
+                        let language = activeSettings.language
+                        let context = "\(MouseSettings.displayName(forCGButton: heldButton.logicalButton, language: language)) + \(direction.menuTitle(for: language))"
                         perform(gestureAction, button: heldButton.logicalButton, context: context)
                     }
                     return nil
@@ -267,106 +283,77 @@ final class MouseEngine {
     }
 
     private func perform(_ action: MouseAction, button: Int, context: String? = nil) {
-        let prefix = "\(context ?? MouseSettings.displayName(forCGButton: button))："
+        let language = currentSettings().language
+        let prefix = "\(context ?? MouseSettings.displayName(forCGButton: button, language: language)): "
         switch action {
         case .passThrough:
-            break
+            return
         case .back:
             Keyboard.commandLeftBracket()
-            announce(prefix + "后退")
         case .forward:
             Keyboard.commandRightBracket()
-            announce(prefix + "前进")
         case .missionControl:
             Keyboard.controlUp()
-            announce(prefix + "调度中心")
         case .appExpose:
             Keyboard.controlDown()
-            announce(prefix + "App Expose")
         case .showDesktop:
             Keyboard.showDesktop()
-            announce(prefix + "显示桌面")
         case .launchpad:
             Keyboard.launchpad()
-            announce(prefix + "启动台")
         case .spaceLeft:
             Keyboard.moveSpaceLeft()
-            announce(prefix + "切换到左侧桌面")
         case .spaceRight:
             Keyboard.moveSpaceRight()
-            announce(prefix + "切换到右侧桌面")
         case .previousTab:
             Keyboard.previousTab()
-            announce(prefix + "上一个标签页")
         case .nextTab:
             Keyboard.nextTab()
-            announce(prefix + "下一个标签页")
         case .newTab:
             Keyboard.newTab()
-            announce(prefix + "新建标签页")
         case .closeTab:
             Keyboard.closeTab()
-            announce(prefix + "关闭标签页")
         case .refresh:
             Keyboard.refresh()
-            announce(prefix + "刷新")
         case .copy:
             Keyboard.copy()
-            announce(prefix + "复制")
         case .paste:
             Keyboard.paste()
-            announce(prefix + "粘贴")
         case .undo:
             Keyboard.undo()
-            announce(prefix + "撤销")
         case .redo:
             Keyboard.redo()
-            announce(prefix + "重做")
         case .zoomIn:
             magnificationGesture.pulse(action: .zoomIn)
-            announce(prefix + "捏合放大")
         case .zoomOut:
             magnificationGesture.pulse(action: .zoomOut)
-            announce(prefix + "捏合缩小")
         case .pageUp:
             Keyboard.pageUp()
-            announce(prefix + "上一页")
         case .pageDown:
             Keyboard.pageDown()
-            announce(prefix + "下一页")
         case .escape:
             Keyboard.escape()
-            announce(prefix + "Esc")
         case .returnKey:
             Keyboard.returnKey()
-            announce(prefix + "回车")
         case .screenshotArea:
             Keyboard.screenshotArea()
-            announce(prefix + "区域截图")
         case .lockScreen:
             Keyboard.lockScreen()
-            announce(prefix + "锁定屏幕")
         case .middleClick:
             postMiddleClick()
-            announce(prefix + "中键点击")
         case .volumeUp:
             Keyboard.volumeUp()
-            announce(prefix + "增大音量")
         case .volumeDown:
             Keyboard.volumeDown()
-            announce(prefix + "减小音量")
         case .mute:
             Keyboard.mute()
-            announce(prefix + "静音 / 取消静音")
         case .previousApp:
             Keyboard.previousApp()
-            announce(prefix + "上一个 App")
         case .nextApp:
             Keyboard.nextApp()
-            announce(prefix + "下一个 App")
         case .disabled:
-            announce(prefix + "按钮已禁用")
+            break
         }
+        announce(prefix + action.menuTitle(for: language))
     }
 
     private func performDeferredClick(_ heldButton: SideButtonGestureTracker.HeldButton) {
